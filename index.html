@@ -1,1 +1,464 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Toolbox</title>
 
+  <style>
+    *{
+      box-sizing:border-box;
+    }
+
+    body{
+      margin:0;
+      background:#111;
+      color:white;
+      font-family:sans-serif;
+    }
+
+    header{
+      padding:24px;
+      border-bottom:1px solid #222;
+      position:sticky;
+      top:0;
+      background:#111;
+      z-index:10;
+    }
+
+    h1{
+      margin:0 0 18px;
+      font-size:28px;
+    }
+
+    #search{
+      width:100%;
+      padding:14px;
+      border:none;
+      border-radius:14px;
+      background:#1d1d1d;
+      color:white;
+      font-size:16px;
+      outline:none;
+    }
+
+    .categories{
+      display:flex;
+      gap:10px;
+      margin-top:14px;
+      overflow:auto;
+      padding-bottom:4px;
+    }
+
+    .category{
+      border:none;
+      background:#1d1d1d;
+      color:white;
+      padding:10px 14px;
+      border-radius:999px;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+
+    .category.active{
+      background:white;
+      color:black;
+    }
+
+    main{
+      padding:24px;
+    }
+
+    section{
+      margin-bottom:42px;
+    }
+
+    h2{
+      margin:0 0 16px;
+      font-size:22px;
+    }
+
+    .tools{
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
+      gap:16px;
+    }
+
+    .tool{
+      background:#1a1a1a;
+      border:1px solid #222;
+      border-radius:18px;
+      padding:16px;
+      transition:0.15s;
+      cursor:pointer;
+      position:relative;
+    }
+
+    .tool:hover{
+      transform:translateY(-2px);
+      border-color:#333;
+    }
+
+    .tool-top{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:12px;
+    }
+
+    .tool-top-left{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+
+    .tool-icon{
+      width:22px;
+      height:22px;
+      object-fit:contain;
+    }
+
+    .favorite{
+      background:none;
+      border:none;
+      color:#888;
+      cursor:pointer;
+      font-size:20px;
+      padding:0;
+    }
+
+    .favorite.active{
+      color:#ffd54a;
+    }
+
+    .tool-name{
+      font-size:18px;
+      font-weight:bold;
+    }
+
+    .tool-description{
+      color:#aaa;
+      margin-bottom:12px;
+      line-height:1.5;
+    }
+
+    .tags{
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+    }
+
+    .tag{
+      background:#222;
+      color:#bbb;
+      padding:4px 8px;
+      border-radius:999px;
+      font-size:12px;
+    }
+
+    .empty{
+      color:#777;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Toolbox</h1>
+
+    <input id="search" type="text" placeholder="検索...">
+
+    <div class="categories" id="categories"></div>
+  </header>
+
+  <main>
+
+    <section id="favorites-section">
+      <h2>★ お気に入り</h2>
+      <div class="tools" id="favorites"></div>
+    </section>
+
+    <section id="recent-section">
+      <h2>🕒 最近見た</h2>
+      <div class="tools" id="recent"></div>
+    </section>
+
+    <section>
+      <h2>🧰 ツール一覧</h2>
+      <div class="tools" id="tools"></div>
+    </section>
+
+  </main>
+
+  <script>
+
+    const tools = [
+      {
+        id:"json",
+        name:"JSON Formatter",
+        description:"JSONを整形して見やすく表示します",
+        tags:["json","text","format"],
+        category:"開発",
+        icon:"assets/icons/development.svg",
+        url:"tools/json/"
+      },
+      {
+        id:"markdown",
+        name:"Markdown Preview",
+        description:"Markdownをリアルタイムでプレビューします",
+        tags:["markdown","text"],
+        category:"テキスト",
+        icon:"assets/icons/text.svg",
+        url:"tools/markdown/"
+      },
+      {
+        id:"color",
+        name:"Color Picker",
+        description:"色を選択してコピーできます",
+        tags:["color","image"],
+        category:"画像",
+        icon:"assets/icons/image.svg",
+        url:"tools/color/"
+      },
+      {
+        id:"sb3",
+        name:"SB3 Viewer",
+        description:"sb3ファイルを展開して中身を確認します",
+        tags:["scratch","sb3"],
+        category:"Scratch",
+        icon:"assets/icons/scratch.svg",
+        url:"tools/sb3/"
+      }
+    ];
+
+    const categories = [
+      "すべて",
+      ...new Set(tools.map(v=>v.category))
+    ];
+
+    const searchInput = document.getElementById("search");
+    const toolsElement = document.getElementById("tools");
+    const favoritesElement = document.getElementById("favorites");
+    const recentElement = document.getElementById("recent");
+    const categoriesElement = document.getElementById("categories");
+
+    let currentCategory = "すべて";
+
+    function getFavorites(){
+      return JSON.parse(localStorage.getItem("favorites") || "[]");
+    }
+
+    function getRecent(){
+      return JSON.parse(localStorage.getItem("recent") || "[]");
+    }
+
+    function saveFavorites(list){
+      localStorage.setItem("favorites", JSON.stringify(list));
+    }
+
+    function saveRecent(list){
+      localStorage.setItem("recent", JSON.stringify(list));
+    }
+
+    function score(tool, text){
+
+      if(!text) return 0;
+
+      text = text.toLowerCase();
+
+      let score = 0;
+
+      if(tool.name.toLowerCase().includes(text))
+        score += 100;
+
+      if(tool.tags.some(v => v.toLowerCase().includes(text)))
+        score += 50;
+
+      if(tool.description.toLowerCase().includes(text))
+        score += 10;
+
+      return score;
+    }
+
+    function createTool(tool){
+
+      const favorites = getFavorites();
+
+      const element = document.createElement("div");
+      element.className = "tool";
+
+      element.innerHTML = `
+        <div class="tool-top">
+          <div class="tool-top-left">
+            <img class="tool-icon" src="${tool.icon}">
+            <div class="tool-name">${tool.name}</div>
+          </div>
+
+          <button class="favorite ${favorites.includes(tool.id) ? "active" : ""}">
+            ★
+          </button>
+        </div>
+
+        <div class="tool-description">
+          ${tool.description}
+        </div>
+
+        <div class="tags">
+          ${tool.tags.map(v=>`<div class="tag">#${v}</div>`).join("")}
+        </div>
+      `;
+
+      element.onclick = () => {
+
+        let recent = getRecent();
+
+        recent = recent.filter(v => v !== tool.id);
+
+        recent.unshift(tool.id);
+
+        recent = recent.slice(0, 10);
+
+        saveRecent(recent);
+
+        location.href = tool.url;
+      };
+
+      const favoriteButton = element.querySelector(".favorite");
+
+      favoriteButton.onclick = (e) => {
+
+        e.stopPropagation();
+
+        let favorites = getFavorites();
+
+        if(favorites.includes(tool.id)){
+          favorites = favorites.filter(v => v !== tool.id);
+        }
+        else{
+          favorites.push(tool.id);
+        }
+
+        saveFavorites(favorites);
+
+        render();
+      };
+
+      element.querySelectorAll(".tag").forEach(tag => {
+        tag.onclick = (e) => {
+          e.stopPropagation();
+          searchInput.value = tag.innerText.replace("#", "");
+          render();
+        };
+      });
+
+      return element;
+    }
+
+    function renderCategories(){
+
+      categoriesElement.innerHTML = "";
+
+      categories.forEach(category => {
+
+        const button = document.createElement("button");
+
+        button.className = `category ${currentCategory === category ? "active" : ""}`;
+
+        button.innerText = category;
+
+        button.onclick = () => {
+          currentCategory = category;
+          render();
+        };
+
+        categoriesElement.appendChild(button);
+      });
+    }
+
+    function render(){
+
+      renderCategories();
+
+      const search = searchInput.value.trim().toLowerCase();
+
+      let filtered = [...tools];
+
+      if(currentCategory !== "すべて"){
+        filtered = filtered.filter(v => v.category === currentCategory);
+      }
+
+      if(search){
+
+        filtered = filtered
+          .filter(v => score(v, search) > 0)
+          .sort((a,b)=>score(b, search)-score(a, search));
+
+        document.getElementById("favorites-section").style.display = "none";
+        document.getElementById("recent-section").style.display = "none";
+      }
+      else{
+        document.getElementById("favorites-section").style.display = "block";
+        document.getElementById("recent-section").style.display = "block";
+      }
+
+      toolsElement.innerHTML = "";
+
+      if(filtered.length === 0){
+        toolsElement.innerHTML = '<div class="empty">ツールが見つかりません</div>';
+      }
+      else{
+        filtered.forEach(tool => {
+          toolsElement.appendChild(createTool(tool));
+        });
+      }
+
+      renderFavorites();
+      renderRecent();
+    }
+
+    function renderFavorites(){
+
+      favoritesElement.innerHTML = "";
+
+      const favorites = getFavorites();
+
+      const favoriteTools = tools.filter(v => favorites.includes(v.id));
+
+      if(favoriteTools.length === 0){
+        favoritesElement.innerHTML = '<div class="empty">お気に入りしたツールがここに表示されます</div>';
+        return;
+      }
+
+      favoriteTools.forEach(tool => {
+        favoritesElement.appendChild(createTool(tool));
+      });
+    }
+
+    function renderRecent(){
+
+      recentElement.innerHTML = "";
+
+      const recent = getRecent();
+
+      const recentTools = recent
+        .map(id => tools.find(v => v.id === id))
+        .filter(Boolean);
+
+      if(recentTools.length === 0){
+        recentElement.innerHTML = '<div class="empty">最近開いたツールがここに表示されます</div>';
+        return;
+      }
+
+      recentTools.forEach(tool => {
+        recentElement.appendChild(createTool(tool));
+      });
+    }
+
+    searchInput.oninput = render;
+
+    render();
+
+  </script>
+
+</body>
+</html>
