@@ -124,7 +124,19 @@
       color:#888;
       cursor:pointer;
       font-size:20px;
-      padding:0;
+      padding:6px;
+      border-radius:10px;
+      transition:0.15s;
+    }
+
+    .favorite:hover{
+      background:#2a2a2a;
+      transform:scale(1.08);
+      color:#bbb;
+    }
+
+    .favorite:active{
+      transform:scale(0.95);
     }
 
     .favorite.active{
@@ -154,6 +166,18 @@
       padding:4px 8px;
       border-radius:999px;
       font-size:12px;
+      cursor:pointer;
+      transition:0.15s;
+    }
+
+    .tag:hover{
+      background:#2d2d2d;
+      color:white;
+      transform:translateY(-1px);
+    }
+
+    .tag:active{
+      transform:translateY(0px) scale(0.96);
     }
 
     .empty{
