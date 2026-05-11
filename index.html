@@ -14,8 +14,12 @@
 
   <main>
 
-    <h1>Toolbox</h1>
-    <p>lpv_vqlの工具箱</p>
+    <div class="hero">
+      <h1>Toolbox</h1>
+      <div class="hero-description">
+        小さな便利ツールや実験ツールをまとめたツールボックス
+      </div>
+    </div>
 
     <section id="favorites-section">
       <h2>★ お気に入り</h2>
@@ -27,9 +31,10 @@
       <div class="tools" id="recent"></div>
     </section>
     
-    <input id="search" type="text" placeholder="検索...">
-
-    <div class="categories" id="categories"></div>
+    <div class="search-area">
+      <input id="search" type="text" placeholder="検索...">
+      <div class="categories" id="categories"></div>
+    </div>
 
     <section>
       <h2>🧰 ツール一覧</h2>
@@ -241,10 +246,12 @@
           .filter(v => score(v, search) > 0)
           .sort((a,b)=>score(b, search)-score(a, search));
 
+        document.getElementById("hero").style.display = "none";
         document.getElementById("favorites-section").style.display = "none";
         document.getElementById("recent-section").style.display = "none";
       }
       else{
+        document.getElementById("hero").style.display = "block";
         document.getElementById("favorites-section").style.display = "block";
         document.getElementById("recent-section").style.display = "block";
       }
