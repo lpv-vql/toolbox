@@ -268,19 +268,9 @@
       }
 
       if(search){
-
         filtered = filtered
           .filter(v => score(v, search) > 0)
           .sort((a,b)=>score(b, search)-score(a, search));
-
-        document.getElementById("hero-section").style.display = "none";
-        document.getElementById("favorites-section").style.display = "none";
-        document.getElementById("recent-section").style.display = "none";
-      }
-      else{
-        document.getElementById("hero-section").style.display = "block";
-        document.getElementById("favorites-section").style.display = "block";
-        document.getElementById("recent-section").style.display = "block";
       }
 
       toolsElement.innerHTML = "";
