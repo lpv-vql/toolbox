@@ -32,12 +32,12 @@
     </section>
     
     <section class="search-area">
+      <h2>🧰 ツール一覧</h2>
       <input id="search" type="text" placeholder="検索...">
       <div class="categories" id="categories"></div>
     </section>
 
     <section>
-      <h2>🧰 ツール一覧</h2>
       <div class="tools" id="tools"></div>
     </section>
 
@@ -246,12 +246,12 @@
           .filter(v => score(v, search) > 0)
           .sort((a,b)=>score(b, search)-score(a, search));
 
-        document.getElementById("favorites-section").style.display = "none";
+        document.getElementById("hero-section").style.display = "none";
         document.getElementById("favorites-section").style.display = "none";
         document.getElementById("recent-section").style.display = "none";
       }
       else{
-        document.getElementById("favorites-section").style.display = "block";
+        document.getElementById("hero-section").style.display = "block";
         document.getElementById("favorites-section").style.display = "block";
         document.getElementById("recent-section").style.display = "block";
       }
