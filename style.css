@@ -4,7 +4,7 @@
 
     body{
       margin:0;
-      background:#f8f8f8;
+      background:#fafafa;
       color:#444;
       font-family:sans-serif;
     }
@@ -14,8 +14,13 @@
       border-bottom:1px solid #eee;
       position:sticky;
       top:0;
-      background:#f8f8f8;
+      background-color: rgba(255, 255, 255, 0.93);
       z-index:10;
+    }
+
+    .logo{
+       margin:0;
+       font-size:28px;
     }
 
     h1{
@@ -121,7 +126,7 @@
     }
 
     .favorite:hover{
-      background:#f8f8f8;
+      background:#fafafa;
       transform:scale(1.08);
       color:#aaa;
     }
@@ -152,7 +157,7 @@
     }
 
     .tag{
-      background:#f8f8f8;
+      background:#fafafa;
       color:#888;
       padding:4px 8px;
       border-radius:999px;
