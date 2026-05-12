@@ -34,7 +34,10 @@
     
     <section class="search-area">
       <h2>🧰 ツール一覧</h2>
-      <input id="search" type="text" placeholder="検索...">
+      <div class="search-box">
+        <input id="search" type="text" placeholder="検索...">
+        <button id="clear-search">×</button>
+      </div>
       <div class="categories" id="categories"></div>
     </section>
 
@@ -278,17 +281,32 @@
 
       if(filtered.length === 0){
         toolsElement.innerHTML = '<div class="empty">ツールが見つかりません</div>';
-      }
-      else{
+      }else{
         filtered.forEach(tool => {
           toolsElement.appendChild(createTool(tool));
         });
+      }
+
+      if(search){
+        clearSearchButton.classList.remove("hidden");
+      }else{
+        clearSearchButton.classList.add("hidden");
       }
 
       renderFavorites();
       renderRecent();
     }
 
+    const clearSearchButton = document.getElementById("clear-search");
+    clearSearchButton.onclick = () => {
+
+      searchInput.value = "";
+
+      render();
+
+      searchInput.focus();
+    };
+    
     function renderFavorites(){
 
       favoritesElement.innerHTML = "";
