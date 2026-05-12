@@ -170,6 +170,30 @@
       object-fit:contain;
     }
 
+    .horizontal-tools{
+      display:flex;
+      gap:16px;
+
+      overflow-x:auto;
+      overflow-y:hidden;
+
+      padding-bottom:6px;
+    }
+
+     .horizontal-tools .tool{
+      min-width:280px;
+      flex-shrink:0;
+    }
+
+    .horizontal-tools::-webkit-scrollbar{
+      height:8px;
+    }
+
+    .horizontal-tools::-webkit-scrollbar-thumb{
+      background:#ddd;
+      border-radius:999px;
+    }
+
     .favorite{
       background:none;
       border:none;
