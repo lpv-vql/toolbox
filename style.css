@@ -181,7 +181,7 @@
     }
 
      .horizontal-tools .tool{
-      min-width:280px;
+      width:280px;
       flex-shrink:0;
     }
 
