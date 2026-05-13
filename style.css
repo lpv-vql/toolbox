@@ -1,46 +1,47 @@
     *{
-      box-sizing:border-box;
+      box-sizing: border-box;
     }
 
     body{
-      margin:0;
-      background:#fff;
-      color:#444;
-      font-family:sans-serif;
+      margin: 0;
+      background: #fff;
+      color: #444;
+      font-family: sans-serif;
     }
 
     header{
-      padding:24px;
-      border-bottom:1px solid #e6e6e6;
-      position:sticky;
-      top:0;
-      background-color: rgba(255, 255, 255, 0.8);
-      backdrop-filter: blur(8px);
-      z-index:1000;
-      touch-action: none; 
+      padding: 24px;
+      border-bottom: 1px solid #e6e6e6;
+      position: sticky;
+      top: 0;
+      background-color:  rgba(255, 255, 255, 0.8);
+      backdrop-filter:  blur(8px);
+      z-index: 1000;
+      touch-action:  none; 
     }
 
     .logo{
-       margin:0;
-       font-size:28px;
+       margin: 0;
+       font-size: 28px;
     }
 
     main{
-      padding:48px;
+      padding: 48px;
     }
 
     section{
-      margin-bottom:42px;
+      margin-bottom: 42px;
     }
 
     h1 {
-      margin:0 0 18px;
-      font-size:120px;
+      margin: 0 0 18px;
+      font-size: 120px;
       display: inline-block;
-      background-image:linear-gradient(transparent 70%, #b9f0f4 60%);
+      background-image: linear-gradient(transparent 70%, #b9f0f4 60%);
       background-repeat: no-repeat;
       background-size: 0% 100%;
       animation: marker-animation 1s forwards;
+      animation: bounce-animation 1.2s ease infinite alternate;
     }
 
     @keyframes marker-animation {
@@ -52,209 +53,218 @@
       }
     }
 
+    @keyframes bounce-animation {
+      0% {
+        transform: translateY(0);
+      }
+      100% {
+        transform: translateY(-15px);
+      }
+    }
+
     h2{
-      margin:0 0 16px;
-      font-size:22px;
+      margin: 0 0 16px;
+      font-size: 22px;
     }
 
     #search{
-      width:100%;
-      padding:14px;
-      border:1px solid #e6e6e6;
-      border-radius:14px;
-      background:#fff;
-      color:#444;
-      font-size:16px;
-      outline:none;
+      width: 100%;
+      padding: 14px;
+      border: 1px solid #e6e6e6;
+      border-radius: 14px;
+      background: #fff;
+      color: #444;
+      font-size: 16px;
+      outline: none;
     }
 
     .search-box{
-      position:relative;
+      position: relative;
     }
 
     #clear-search{
-      position:absolute;
-      top:50%;
-      right:12px;
-      transform:translateY(-50%);
+      position: absolute;
+      top: 50%;
+      right: 12px;
+      transform: translateY(-50%);
 
-      border:none;
-      background:none;
-      cursor:pointer;
+      border: none;
+      background: none;
+      cursor: pointer;
 
-      font-size:18px;
-      color:#888;
+      font-size: 18px;
+      color: #888;
 
-      width:28px;
-      height:28px;
-      border-radius:999px;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
 
-      transition:0.15s;
+      transition: 0.15s;
     }
 
-    #clear-search:hover{
-      background:#f0f0f0;
-      color:#111;
+    #clear-search: hover{
+      background: #f0f0f0;
+      color: #111;
     }
 
-    #clear-search:active{
-      transform:translateY(-50%) scale(0.92);
+    #clear-search: active{
+      transform: translateY(-50%) scale(0.92);
     }
 
     #clear-search.hidden{
-      opacity:0;
-      pointer-events:none;
+      opacity: 0;
+      pointer-events: none;
     }
 
     .categories{
-      display:flex;
-      gap:10px;
-      margin-top:14px;
-      overflow:auto;
-      padding-bottom:4px;
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+      overflow: auto;
+      padding-bottom: 4px;
     }
 
     .category{
-      background:#fff;
-      border:1px solid #e6e6e6;
-      color:#444;
-      padding:10px 14px;
-      border-radius:999px;
-      cursor:pointer;
-      white-space:nowrap;
+      background: #fff;
+      border: 1px solid #e6e6e6;
+      color: #444;
+      padding: 10px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      white-space: nowrap;
     }
 
     .category.active{
-      background:#444;
-      color:#fff;
+      background: #444;
+      color: #fff;
     }
 
     .tools{
-      display:grid;
-      grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
-      gap:16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill,minmax(250px,1fr));
+      gap: 16px;
     }
 
     .tool{
-      background:#fff;
-      border:1px solid #e6e6e6;
-      box-shadow:4px 4px 7px 0px rgb(0, 0, 0, 0.2);
-      border-radius:18px;
-      padding:16px;
-      transition:0.15s;
-      cursor:pointer;
-      position:relative;
+      background: #fff;
+      border: 1px solid #e6e6e6;
+      box-shadow: 4px 4px 7px 0px rgb(0, 0, 0, 0.2);
+      border-radius: 18px;
+      padding: 16px;
+      transition: 0.15s;
+      cursor: pointer;
+      position: relative;
     }
 
-    .tool:hover{
-      box-shadow:inset 4px 4px 7px 0px rgb(0, 0, 0, 0.2);
-      transform:translateY(2px);
+    .tool: hover{
+      box-shadow: inset 4px 4px 7px 0px rgb(0, 0, 0, 0.2);
+      transform: translateY(2px);
     }
 
     .tool-top{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      margin-bottom:12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
     }
 
     .tool-top-left{
-      display:flex;
-      align-items:center;
-      gap:10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
     .tool-icon{
-      width:22px;
-      height:22px;
-      object-fit:contain;
+      width: 22px;
+      height: 22px;
+      object-fit: contain;
     }
 
     .horizontal-tools{
-      display:flex;
-      gap:16px;
+      display: flex;
+      gap: 16px;
 
-      overflow-x:auto;
-      overflow-y:hidden;
+      overflow-x: auto;
+      overflow-y: hidden;
 
-      padding-bottom:15px;
-       padding-right:10px;
+      padding-bottom: 15px;
+       padding-right: 10px;
     }
 
      .horizontal-tools .tool{
-      width:280px;
-      flex-shrink:0;
+      width: 280px;
+      flex-shrink: 0;
     }
 
-    .horizontal-tools::-webkit-scrollbar{
-      height:8px;
+    .horizontal-tools: : -webkit-scrollbar{
+      height: 8px;
     }
 
-    .horizontal-tools::-webkit-scrollbar-thumb{
-      background:#ddd;
-      border-radius:999px;
+    .horizontal-tools: : -webkit-scrollbar-thumb{
+      background: #ddd;
+      border-radius: 999px;
     }
 
     .favorite{
-      background:none;
-      border:none;
-      color:#ddd;
-      cursor:pointer;
-      font-size:20px;
-      border-radius:10px;
-      transition:0.15s;
+      background: none;
+      border: none;
+      color: #ddd;
+      cursor: pointer;
+      font-size: 20px;
+      border-radius: 10px;
+      transition: 0.15s;
     }
 
-    .favorite:hover{
-      transform:scale(1.1);
-      color:#aaa;
+    .favorite: hover{
+      transform: scale(1.1);
+      color: #aaa;
     }
 
-    .favorite:active{
-      transform:scale(0.95);
+    .favorite: active{
+      transform: scale(0.95);
     }
 
     .favorite.active{
-      color:#ffd54a;
+      color: #ffd54a;
     }
 
     .tool-name{
-      font-size:18px;
-      font-weight:bold;
+      font-size: 18px;
+      font-weight: bold;
     }
 
     .tool-description{
-      color:#777;
-      margin-bottom:12px;
-      line-height:1.5;
+      color: #777;
+      margin-bottom: 12px;
+      line-height: 1.5;
     }
 
     .tags{
-      display:flex;
-      flex-wrap:wrap;
-      gap:6px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
     }
 
     .tag{
-      background:#fafafa;
-      color:#888;
-      padding:4px 8px;
-      border-radius:999px;
-      font-size:12px;
-      cursor:pointer;
-      transition:0.15s;
+      background: #fafafa;
+      color: #888;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: 0.15s;
     }
 
-    .tag:hover{
-      background:#e6e6e6;
-      color:#777;
-      transform:translateY(-1px);
+    .tag: hover{
+      background: #e6e6e6;
+      color: #777;
+      transform: translateY(-1px);
     }
 
-    .tag:active{
-      transform:translateY(0px) scale(0.96);
+    .tag: active{
+      transform: translateY(0px) scale(0.96);
     }
 
     .empty{
-      color:#777;
+      color: #777;
     }
