@@ -33,6 +33,8 @@
       margin-bottom: 42px;
     }
 
+    .hero
+
     h1 {
       margin: 0 0 18px;
       font-size: 120px;
@@ -42,7 +44,7 @@
       background-size: 0% 100%;
       animation: 
         marker-animation 1s forwards, 
-        bounce-animation 1.2s ease infinite alternate;
+        bounce-animation 1s ease infinite alternate;
     }
 
     @keyframes marker-animation {
