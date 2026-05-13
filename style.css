@@ -36,6 +36,10 @@
     .hero
 
     h1 {
+      font-family: "Montserrat", sans-serif;
+      font-optical-sizing: auto;
+      font-weight: 300;
+      font-style: normal;
       margin: 0 0 18px;
       font-size: 120px;
       display: inline-block;
