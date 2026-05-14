@@ -252,14 +252,13 @@
 
     .tool-name{
       font-size: 18px;
-      font-weight: bold;
+      font-weight: 500;
     }
 
     .tool-description{
       color: #777;
       margin-bottom: 12px;
       line-height: 1.5;
-      font-weight: 500;
     }
 
     .tags{
