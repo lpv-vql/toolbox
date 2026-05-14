@@ -77,7 +77,8 @@
 
     h2{
       margin: 0 0 16px;
-      font-size: 22px;
+      font-size: 28px;
+      font-weight: 500;
     }
 
     #search{
@@ -258,6 +259,7 @@
       color: #777;
       margin-bottom: 12px;
       line-height: 1.5;
+      font-weight: 500;
     }
 
     .tags{
