@@ -21,8 +21,12 @@
     }
 
     .logo{
-       margin: 0;
-       font-size: 28px;
+      font-family: "Montserrat", sans-serif;
+      font-optical-sizing: auto;
+      font-weight: 300;
+      font-style: normal;
+      margin: 0;
+      font-size: 28px;
     }
 
     main{
