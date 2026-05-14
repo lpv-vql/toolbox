@@ -6,8 +6,9 @@
       margin: 0;
       background: #fff;
       color: #444;
-      font-family: "Zen Maru Gothic", sans-serif;
-      font-weight: 300;
+      font-family: "Noto Sans JP", sans-serif;
+      font-optical-sizing: auto;
+      font-weight: 400;
       font-style: normal;
     }
 
@@ -38,8 +39,6 @@
     section{
       margin-bottom: 42px;
     }
-
-    .hero
 
     h1 {
       font-family: "Montserrat", sans-serif;
@@ -88,6 +87,10 @@
       border-radius: 14px;
       background: #fff;
       color: #444;
+      font-family: "Noto Sans JP", sans-serif;
+      font-optical-sizing: auto;
+      font-weight: 400;
+      font-style: normal;
       font-size: 16px;
       outline: none;
     }
@@ -146,6 +149,10 @@
       border-radius: 999px;
       cursor: pointer;
       white-space: nowrap;
+      font-family: "Noto Sans JP", sans-serif;
+      font-optical-sizing: auto;
+      font-weight: 400;
+      font-style: normal;
     }
 
     .category.active{
