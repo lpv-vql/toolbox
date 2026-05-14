@@ -120,12 +120,12 @@
       transition: 0.15s;
     }
 
-    #clear-search: hover{
+    #clear-search:hover{
       background: #f0f0f0;
       color: #111;
     }
 
-    #clear-search: active{
+    #clear-search:active{
       transform: translateY(-50%) scale(0.92);
     }
 
@@ -178,7 +178,7 @@
       position: relative;
     }
 
-    .tool: hover{
+    .tool:hover{
       box-shadow: inset 4px 4px 7px 0px rgb(0, 0, 0, 0.2);
       transform: translateY(2px);
     }
@@ -213,16 +213,16 @@
        padding-right: 10px;
     }
 
-     .horizontal-tools .tool{
+     .horizontal-tools.tool{
       width: 280px;
       flex-shrink: 0;
     }
 
-    .horizontal-tools: : -webkit-scrollbar{
+    .horizontal-tools::-webkit-scrollbar{
       height: 8px;
     }
 
-    .horizontal-tools: : -webkit-scrollbar-thumb{
+    .horizontal-tools::-webkit-scrollbar-thumb{
       background: #ddd;
       border-radius: 999px;
     }
@@ -237,12 +237,12 @@
       transition: 0.15s;
     }
 
-    .favorite: hover{
+    .favorite:hover{
       transform: scale(1.1);
       color: #aaa;
     }
 
-    .favorite: active{
+    .favorite:active{
       transform: scale(0.95);
     }
 
@@ -277,13 +277,13 @@
       transition: 0.15s;
     }
 
-    .tag: hover{
+    .tag:hover{
       background: #e6e6e6;
       color: #777;
       transform: translateY(-1px);
     }
 
-    .tag: active{
+    .tag:active{
       transform: translateY(0px) scale(0.96);
     }
 
