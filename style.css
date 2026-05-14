@@ -40,7 +40,7 @@
       margin-bottom: 42px;
     }
 
-    h1 {
+    h1{
       font-family: "Montserrat", sans-serif;
       font-optical-sizing: auto;
       font-weight: 300;
@@ -213,7 +213,7 @@
        padding-right: 10px;
     }
 
-     .horizontal-tools.tool{
+     .horizontal-tools .tool{
       width: 280px;
       flex-shrink: 0;
     }
