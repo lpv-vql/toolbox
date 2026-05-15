@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Toolbox</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header>
+    <a href="/toolbox" class="logo">Toolbox</a>
+  </header>
+  <main>
+    <div id="app" class="container">
+      <h2>Indenter</h2>
+    
+      <div class="controls">
+        <div>
+          <label>各行のインデント幅 (スペース数)</label>
+          <input type="number" v-model.number="indentSize" min="0">
+        </div>
+        <div>
+          <label>全体のオフセット (初期インデント数)</label>
+          <input type="number" v-model.number="baseOffset" min="0">
+        </div>
+      </div>
+
+      <label>コードを入力してください:</label>
+      <textarea v-model="inputText" placeholder="ここにコードをペースト..."></textarea>
+
+      <div class="output-area">
+        <label>変換結果:</label>
+        <pre><code>{{ processedCode }}</code></pre>
+        <button class="copy-btn" @click="copyToClipboard">結果をコピー</button>
+      </div>
+    </div>
+  </main>
+  <script>
+    const { createApp, ref, computed } = Vue;
+
+    createApp({
+        setup() {
+            const inputText = ref("function hello() {\n  console.log('world');\n}");
+            const indentSize = ref(2); // 1段階ごとのスペース数
+            const baseOffset = ref(0); // 大元のインデント
+
+            const processedCode = computed(() => {
+                const lines = inputText.value.split('\n');
+                
+                return lines.map(line => {
+                    // 現在の行が持っている先頭の空白をカウント
+                    const leadingSpaces = line.match(/^ */)[0].length;
+                    // もともとのインデントレベルを推測（2スペース想定で計算）
+                    // ※より正確にするなら「元々の1レベルあたりの数」の設定も必要ですが、
+                    // ここでは入力の空白を1レベル＝2スペースと仮定して再計算します。
+                    const level = Math.floor(leadingSpaces / 2); 
+                    
+                    const newIndent = ' '.repeat(baseOffset.value + (level * indentSize.value));
+                    return newIndent + line.trimStart();
+                }).join('\n');
+            });
+
+            const copyToClipboard = () => {
+                navigator.clipboard.writeText(processedCode.value);
+                alert("コピーしました！");
+            };
+
+            return { inputText, indentSize, baseOffset, processedCode, copyToClipboard };
+        }
+    }).mount('#app');
+  </script>
+</body>
+</html>
