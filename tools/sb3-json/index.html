@@ -11,17 +11,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../style.css">
     <style>        
-        .controls { background: #eef6ff; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #d1e3f8; }
         input[type="file"] { margin-top: 10px; font-size: 16px; }
         
         #editor-section { display: none; animation: fadeIn 0.5s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-        #json-editor { 
-            width: 100%; height: 500px; font-family: 'Consolas', 'Monaco', monospace; 
-            margin-top: 15px; padding: 10px; border: 1px solid #ccc; border-radius: 4px;
-            box-sizing: border-box; resize: vertical; background-color: #fafafa;
-        }
         
         .btn-group { margin-top: 20px; display: flex; gap: 10px; }
         button { 
@@ -44,17 +37,17 @@
     <h1>sb3のJSON編集ツール</h1>
     
     <div class="controls">
-        <label><strong>1. PCから.sb3ファイルを選択してください</strong></label><br>
+        <h2>1. PCから.sb3ファイルを選択してください</h2><br>
         <input type="file" id="file-input" accept=".sb3">
         <div id="status" class="status"></div>
     </div>
 
     <div id="editor-section">
-        <p><strong>2. 内容を書き換えてください (project.json)</strong></p>
-        <textarea id="json-editor" spellcheck="false"></textarea>
+        <h2>2. 内容を書き換えてください</h2>
+        <textarea class="code-editor" id="json-editor" spellcheck="false"></textarea>
         
         <div class="btn-group">
-            <button id="download-overwrite" class="btn-overwrite">元の名前で保存 (上書き保存)</button>
+            <button id="download-overwrite" class="btn-overwrite">上書き保存</button>
             <button id="download-new" class="btn-new">新しいファイルとして保存</button>
         </div>
     </div>
