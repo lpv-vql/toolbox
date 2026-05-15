@@ -1,41 +1,63 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Toolbox</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SB3 JSON Editor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; background-color: #f0f2f5; color: #333; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h2 { border-bottom: 2px solid #4A90E2; padding-bottom: 10px; color: #2c3e50; }
+        
+        .controls { background: #eef6ff; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #d1e3f8; }
+        input[type="file"] { margin-top: 10px; font-size: 16px; }
+        
+        #editor-section { display: none; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        #json-editor { 
+            width: 100%; height: 500px; font-family: 'Consolas', 'Monaco', monospace; 
+            margin-top: 15px; padding: 10px; border: 1px solid #ccc; border-radius: 4px;
+            box-sizing: border-box; resize: vertical; background-color: #fafafa;
+        }
+        
+        .btn-group { margin-top: 20px; display: flex; gap: 10px; }
+        button { 
+            flex: 1; padding: 12px; cursor: pointer; font-weight: bold; border: none; border-radius: 6px; 
+            transition: background 0.3s; color: white;
+        }
+        .btn-overwrite { background-color: #4A90E2; }
+        .btn-overwrite:hover { background-color: #357abd; }
+        .btn-new { background-color: #2ecc71; }
+        .btn-new:hover { background-color: #27ae60; }
+        
+        .status { color: #e74c3c; margin-top: 10px; font-weight: bold; }
+    </style>
 </head>
 <body>
-  <header>
-    <a href="/toolbox" class="logo">Toolbox</a>
-  </header>
-  <main>
-    <h1>sb3のJSON編集</h1>
+
+<div class="container">
+    <h1>sb3のJSON編集ツール</h1>
     
     <div class="controls">
-      <label><strong>1. PCから.sb3ファイルを選択してください</strong></label><br>
-      <input type="file" id="file-input" accept=".sb3">
-      <div id="status" class="status"></div>
+        <label><strong>1. PCから.sb3ファイルを選択してください</strong></label><br>
+        <input type="file" id="file-input" accept=".sb3">
+        <div id="status" class="status"></div>
     </div>
 
     <div id="editor-section">
-      <p><strong>2. 内容を書き換えてください (project.json)</strong></p>
-      <textarea id="json-editor" spellcheck="false"></textarea>
+        <p><strong>2. 内容を書き換えてください (project.json)</strong></p>
+        <textarea id="json-editor" spellcheck="false"></textarea>
         
-      <div class="btn-group">
-        <button id="download-overwrite" class="btn-overwrite">元の名前で保存 (上書き保存)</button>
-        <button id="download-new" class="btn-new">新しいファイルとして保存</button>
-      </div>
+        <div class="btn-group">
+            <button id="download-overwrite" class="btn-overwrite">元の名前で保存 (上書き保存)</button>
+            <button id="download-new" class="btn-new">新しいファイルとして保存</button>
+        </div>
     </div>
-  </div>
+</div>
 
-  </main>
-  <script>
+<script>
     let originalZip = null;
     let originalFileName = "";
 
@@ -96,6 +118,7 @@
 
     document.getElementById('download-overwrite').onclick = () => saveSb3(false);
     document.getElementById('download-new').onclick = () => saveSb3(true);
-  </script>
+</script>
+
 </body>
 </html>
