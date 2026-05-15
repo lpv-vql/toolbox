@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Toolbox</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <header>
+    <a href="/toolbox" class="logo">Toolbox</a>
+  </header>
+  <main>
+    <h1>sb3のJSON編集</h1>
+    
+    <div class="controls">
+        <p>1. SB3ファイルを選択してください</p>
+        <input type="蓄積" id="file-input" type="file" accept=".sb3">
+        <div id="status" class="status"></div>
+    </div>
+
+    <div id="editor-section" style="display:none;">
+        <p>2. JSONを編集してください (project.json)</p>
+        <textarea id="json-editor"></textarea>
+        
+        <div class="btn-group">
+            <button id="download-overwrite">元の名前で保存 (上書き風)</button>
+            <button id="download-new">新しい名前で保存</button>
+        </div>
+    </div>
+
+  </main>
+  <script>
+    let originalZip = null;
+    let originalFileName = "";
+    
+    // ファイル読み込み
+    document.getElementById('file-input').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+            
+      originalFileName = file.name;
+      const reader = new FileReader();
+            
+      reader.onload = async (event) => {
+        try {
+          const zip = new JSZip();
+          originalZip = await zip.loadAsync(event.target.result);
+                  
+          // project.jsonを探す
+          const jsonFile = originalZip.file("project.json");
+          if (jsonFile) {
+            const jsonText = await jsonFile.async("string");
+            // 整形して表示
+            document.getElementById('json-editor').value = JSON.stringify(JSON.parse(jsonText), null, 4);
+            document.getElementById('editor-section').style.display = "block";
+            document.getElementById('status').innerText = "";
+          } else {
+            alert("project.json が見つかりませんでした。");
+          }
+        } catch (err) {
+          document.getElementById('status').innerText = "エラー: ファイルの読み込みに失敗しました。";
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    // 再圧縮・ダウンロード処理
+    async function saveSb3(isNewFile) {
+      if (!originalZip) return;
+
+      const newJsonText = document.getElementById('json-editor').value;
+      try {
+        // JSONのバリデーションチェック
+        JSON.parse(newJsonText);
+               
+        // project.jsonを差し替え
+        originalZip.file("project.json", newJsonText);
+                
+        // 再圧縮
+        const content = await originalZip.generateAsync({type: "blob"});
+                
+        // ファイル名の決定
+        let fileName = originalFileName;
+        if (isNewFile) {
+          fileName = "edited_" + originalFileName;
+        }
+
+        // ダウンロード実行
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(content);
+        link.download = fileName;
+        link.click();
+      } catch (e) {
+        alert("JSONの形式が正しくありません。");
+      }
+    }
+
+    document.getElementById('download-overwrite').onclick = () => saveSb3(false);
+    document.getElementById('download-new').onclick = () => saveSb3(true);
+  </script>
+</body>
+</html>
