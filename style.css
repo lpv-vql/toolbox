@@ -21,10 +21,10 @@
       backdrop-filter: blur(8px);
       z-index: 1000;
       touch-action: none;
-      display: grid;
     }
 
     .logo{
+      display: inline-block;
       margin: 0;
       overflow: hidden;
       color: transparent;
