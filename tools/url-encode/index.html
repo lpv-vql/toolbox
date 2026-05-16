@@ -10,155 +10,104 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../style.css">
     <style>
-        
-        .section {
-            margin-bottom: 40px;
-            animation: fadeIn 0.5s;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        /* ボタン */
-        .btn-group {
-            margin-top: 10px;
-            display: flex;
-            gap: 10px;
+        .field-container {
+            margin-bottom: 25px;
+            position: relative;
         }
         .status {
             color: #e74c3c;
-            margin-top: 10px;
+            min-height: 20px;
+            margin-top: 5px;
             font-weight: bold;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
         }
-        hr {
-            border: 0;
-            height: 1px;
-            background: #eee;
-            margin: 40px 0;
+        .hint {
+            position: absolute;
+            right: 10px;
+            top: 0;
+            font-size: 0.75rem;
+            color: #999;
         }
     </style>
 </head>
 <body>
 
 <header>
-    <a href="/toolbox" class="logo">Toolbox</a>
+    <a href="#" class="logo">Toolbox</a>
 </header>
 
 <main>
     <h1>URLエンコーダー / デコーダー</h1>
     
-    <div class="section">
-        <h2>URLエンコード</h2>
-        <p>日本語などのテキストを、URL用の形式（%xx）に変換します。</p>
-        <textarea class="code-editor" id="encode-input" placeholder="ここに通常のテキスト（例：こんにちは）を入力してください" spellcheck="false"></textarea>
-        
-        <div class="btn-group">
-            <button id="encode-btn">エンコードする</button>
-        </div>
-
-        <div id="encode-result" style="display: none; margin-top: 20px;">
-            <h3>変換結果</h3>
-            <textarea class="code-editor" id="encode-output" readonly spellcheck="false" onclick="this.select()"></textarea>
-            <div class="btn-group">
-                <button id="copy-encode-btn" class="secondary">結果をコピー</button>
-            </div>
-        </div>
+    <div class="field-container">
+        <h2>テキスト (生データ)</h2>
+        <p>日本語などの通常のテキスト。入力すると下の欄にエンコードされます。</p>
+        <span class="hint">クリックで全選択</span>
+        <textarea class="code-editor" id="text-input" placeholder="例：こんにちは" spellcheck="false" onclick="this.select()"></textarea>
     </div>
 
-    <hr>
-
-    <div class="section">
-        <h2>URLデコード</h2>
-        <p>URL用の形式（%xx）の文字列を、元の日本語テキストに戻します。</p>
-        <textarea class="code-editor" id="decode-input" placeholder="ここにURLエンコードされた文字列（例：%E3%81%93...）を入力してください" spellcheck="false"></textarea>
-        <div id="decode-status" class="status"></div>
-        
-        <div class="btn-group">
-            <button id="decode-btn">デコードする</button>
-        </div>
-
-        <div id="decode-result" style="display: none; margin-top: 20px;">
-            <h3>復元結果</h3>
-            <textarea class="code-editor" id="decode-output" readonly spellcheck="false" onclick="this.select()"></textarea>
-            <div class="btn-group">
-                <button id="copy-decode-btn" class="secondary">結果をコピー</button>
-            </div>
-        </div>
+    <div class="field-container">
+        <h2>URLエンコード文字列 (%xx)</h2>
+        <p>URL用の形式。ここにペーストするか入力すると、上の欄にデコードされます。</p>
+        <span class="hint">クリックで全選択</span>
+        <textarea class="code-editor" id="encoded-input" placeholder="例：%E3%81%93%E3%82%93%E3%81%AB%E3%81%A1%E3%81%AF" spellcheck="false" onclick="this.select()"></textarea>
+        <div id="error-status" class="status"></div>
     </div>
 
     <div class="toast" id="toast">コピーしました！</div>
 </main>
 
 <script>
-    // --- 1. エンコーダーの処理 ---
-    const encodeInput = document.getElementById('encode-input');
-    const encodeBtn = document.getElementById('encode-btn');
-    const encodeResult = document.getElementById('encode-result');
-    const encodeOutput = document.getElementById('encode-output');
-    const copyEncodeBtn = document.getElementById('copy-encode-btn');
+    const textInput = document.getElementById('text-input');
+    const encodedInput = document.getElementById('encoded-input');
+    const errorStatus = document.getElementById('error-status');
 
-    encodeBtn.addEventListener('click', () => {
-        const text = encodeInput.value;
-        if (!text) {
-            encodeResult.style.display = "none";
+    // テキスト側が入力されたら、エンコードしてURL側へ
+    textInput.addEventListener('input', () => {
+        const rawText = textInput.value;
+        
+        if (!rawText) {
+            encodedInput.value = '';
+            errorStatus.innerText = '';
             return;
         }
-        // encodeURIComponentでURLエンコードを行う
-        const encodedText = encodeURIComponent(text);
-        encodeOutput.value = encodedText;
-        encodeResult.style.display = "block";
+
+        encodedInput.value = encodeURIComponent(rawText);
+        errorStatus.innerText = ''; // テキストからのエンコードでエラーは起きないためクリア
     });
 
-    copyEncodeBtn.addEventListener('click', () => {
-        encodeOutput.select();
-        copyToClipboard(encodeOutput.value);
-    });
+    // URL側が入されたら、デコードしてテキスト側へ
+    encodedInput.addEventListener('input', () => {
+        const encodedText = encodedInput.value;
 
-    // --- 2. デコーダーの処理 ---
-    const decodeInput = document.getElementById('decode-input');
-    const decodeBtn = document.getElementById('decode-btn');
-    const decodeStatus = document.getElementById('decode-status');
-    const decodeResult = document.getElementById('decode-result');
-    const decodeOutput = document.getElementById('decode-output');
-    const copyDecodeBtn = document.getElementById('copy-decode-btn');
-
-    decodeBtn.addEventListener('click', () => {
-        const text = decodeInput.value.trim();
-        if (!text) {
-            decodeResult.style.display = "none";
-            decodeStatus.innerText = "";
+        if (!encodedText) {
+            textInput.value = '';
+            errorStatus.innerText = '';
             return;
         }
 
         try {
-            // decodeURIComponentでデコード。%の記述が不正な場合はエラーを吐く
-            const decodedText = decodeURIComponent(text);
-            decodeOutput.value = decodedText;
-            decodeStatus.innerText = "";
-            decodeResult.style.display = "block";
+            textInput.value = decodeURIComponent(encodedText);
+            errorStatus.innerText = ''; // 成功したらエラーを消す
         } catch (e) {
-            decodeStatus.innerText = "エラー: 正しいURLエンコード形式ではありません。文字列が途中で切れているか、不正な文字が含まれています。";
-            decodeResult.style.display = "none";
+            // 不完全な%記述（%単体や、末尾が途切れているなど）の時にエラー表示
+            errorStatus.innerText = '変換エラー: 正しいURLエンコード形式ではありません（文字列が途切れている可能性があります）';
         }
     });
 
-    copyDecodeBtn.addEventListener('click', () => {
-        decodeOutput.select();
-        copyToClipboard(decodeOutput.value);
+    // 元のコードの「クリックしてコピー」の快適さを残すため、
+    // テキストエリアをクリックした時に自動全選択＆自動クリップボードコピーにする親切設計
+    [textInput, encodedInput].forEach(textarea => {
+        textarea.addEventListener('click', () => {
+            if (textarea.value) {
+                navigator.clipboard.writeText(textarea.value)
+                    .then(() => showToast('クリップボードにコピーしました！'))
+                    .catch(() => {}); // 失敗時はトーストを出さない
+            }
+        });
     });
 
-    // --- 3. 共通関数（クリップボードコピー＆トースト表示） ---
-    function copyToClipboard(text) {
-        navigator.clipboard.writeText(text)
-            .then(() => {
-                showToast("コピーしました！");
-            })
-            .catch(() => {
-                showToast("コピーに失敗しました。手動でコピーしてください。");
-            });
-    }
-
+    // トーストアニメーション制御
     let toastTimeout;
     function showToast(message) {
         const toast = document.getElementById('toast');
@@ -168,7 +117,7 @@
         clearTimeout(toastTimeout);
         toastTimeout = setTimeout(() => {
             toast.classList.remove('show');
-        }, 2000);
+        }, 1800);
     }
 </script>
 </body>
