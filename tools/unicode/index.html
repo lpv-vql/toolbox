@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>指定した範囲のUnicodeの文字出力</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    /* ツール固有のスタイル定義 */
+    .tool-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      font-family: 'Noto Sans JP', 'Montserrat', sans-serif;
+    }
+    .input-group {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .input-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .input-field label {
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: #555;
+    }
+    .input-field input {
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 1rem;
+      text-transform: uppercase;
+      width: 120px;
+    }
+    .btn-generate {
+      padding: 10px 20px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+      align-self: flex-end;
+      margin-bottom: 2px;
+      transition: background-color 0.2s;
+    }
+    .btn-generate:hover {
+      background-color: #0056b3;
+    }
+    .info-text {
+      font-size: 0.9rem;
+      color: #666;
+      margin-bottom: 15px;
+    }
+    .char-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .char-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.15s ease;
+    }
+    .char-box:hover {
+      border-color: #007bff;
+      box-shadow: 0 2px 8px rgba(0,123,255,0.15);
+      transform: translateY(-2px);
+    }
+    .char-visual {
+      font-size: 1.5rem;
+      margin-bottom: 4px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+    }
+    .char-code {
+      font-size: 0.65rem;
+      color: #999;
+      font-family: 'Montserrat', sans-serif;
+    }
+    /* コピートースト通知 */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background-color: #333;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 30px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      font-size: 0.9rem;
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 1000;
+      pointer-events: none;
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="/toolbox" class="logo">Toolbox</a>
+  </header>
+
+  <main>
+    <h1>指定した範囲のUnicodeの文字出力</h1>
+    <div class="tool-container">
+      <h2>表示したいUnicodeの範囲を16進数で指定してください。（※ブラウザの負荷軽減のため、一度に表示できる最大数は2000文字に制限しています）</h2>
+
+      <div class="input-group">
+        <div class="input-field">
+          <label for="start-code">開始 (16進数)</label>
+          <input type="text" id="start-code" value="2100" placeholder="2100">
+        </div>
+        <span>～</span>
+        <div class="input-field">
+          <label for="end-code">終了 (16進数)</label>
+          <input type="text" id="end-code" value="214F" placeholder="214F">
+        </div>
+        <button class="btn-generate" id="btn-generate">表示する</button>
+      </div>
+
+      <div class="info-text" id="result-count"></div>
+      <div class="char-grid" id="char-grid"></div>
+    </div>
+
+    <div class="toast" id="toast">コピーしました！</div>
+  </main>
+
+  <script>
+    document.getElementById('btn-generate').addEventListener('click', generateUnicodeGrid);
+
+    // 初期読み込み時にも実行
+    generateUnicodeGrid();
+
+    function generateUnicodeGrid() {
+      const startInput = document.getElementById('start-code').value.trim();
+      const endInput = document.getElementById('end-code').value.trim();
+      const gridContainer = document.getElementById('char-grid');
+      const countInfo = document.getElementById('result-count');
+
+      // グリッドをクリア
+      gridContainer.innerHTML = '';
+
+      // 16進数の文字列を数値に変換
+      const start = parseInt(startInput, 16);
+      const end = parseInt(endInput, 16);
+
+      // バリデーション
+      if (isNaN(start) || isNaN(end)) {
+        countInfo.textContent = '有効な16進数を入力してください。';
+        countInfo.style.color = 'red';
+        return;
+      }
+
+      if (start > end) {
+        countInfo.textContent = '開始コードは終了コードより小さい値を入力してください。';
+        countInfo.style.color = 'red';
+        return;
+      }
+
+      const count = end - start + 1;
+      const MAX_CHARS = 2000; // フリーズ対策
+
+      if (count > MAX_CHARS) {
+        countInfo.textContent = `範囲が広すぎます（計 ${count} 文字）。負荷軽減のため一度に表示できるのは ${MAX_CHARS} 文字までです。`;
+        countInfo.style.color = 'red';
+        return;
+      }
+
+      countInfo.style.color = '#666';
+      countInfo.textContent = `該当件数: ${count} 件 (クリックで文字をコピーできます)`;
+
+      // フラグメントを使用してDOM構築を最適化
+      const fragment = document.createDocumentFragment();
+
+      for (let i = start; i <= end; i++) {
+        // Unicode数値から文字に変換
+        const char = String.fromCodePoint(i);
+        const hexCode = i.toString(16).toUpperCase().padStart(4, '0');
+
+        // 文字ボックス要素の作成
+        const box = document.createElement('div');
+        box.className = 'char-box';
+        box.dataset.char = char;
+
+        // 見た目の構成
+        box.innerHTML = `
+          <div class="char-visual">${escapeHtml(char)}</div>
+          <div class="char-code">U+${hexCode}</div>
+        `;
+
+        // クリックイベントの追加
+        box.addEventListener('click', () => {
+          copyToClipboard(char);
+        });
+
+        fragment.appendChild(box);
+      }
+
+      gridContainer.appendChild(fragment);
+    }
+
+    // クリップボードコピー処理
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(`「 ${text} 」 をコピーしました`);
+      }).catch(err => {
+        console.error('コピーに失敗しました: ', err);
+      });
+    }
+
+    // トーストアニメーション制御
+    let toastTimeout;
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2000);
+    }
+
+    // HTMLエスケープ（一応の安全対策）
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>
