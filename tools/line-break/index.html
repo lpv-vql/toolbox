@@ -16,14 +16,11 @@
     </style>
 </head>
 <body>
-
 <header>
   <a href="/toolbox" class="logo">Toolbox</a>
 </header>
-
 <main id="app">
     <h1>半角スペースを改行に</h1>
-    
     <h2>テキストを入力してください</h2>
     <textarea class="code-editor" v-model="inputText"></textarea>
 
@@ -32,36 +29,61 @@
         <pre><code>{{ processedCode }}</code></pre>
         <button class="copy-btn" @click="copyToClipboard">結果をコピー</button>
     </div>
+
+    <div class="toast" :class="{ show: isToastShow }">{{ toastMessage }}</div>
 </main>
 
 <script>
     const { createApp, ref, computed } = Vue;
-
     createApp({
         setup() {
             const inputText = ref("");
             const squashSpaces = ref(false); // 連続スペースをまとめるかどうかのフラグ
 
+            // トースト用のリアクティブデータ
+            const isToastShow = ref(false);
+            const toastMessage = ref("コピーしました！");
+            let toastTimeout = null;
+
             // リアルタイムで変換処理を行う算出プロパティ
             const processedCode = computed(() => {
                 if (!inputText.value) return "";
-                
-                // 連続するスペースを1つにまとめる（正規表現: / +/g）か、
-                // 1スペースごとに実直に改行するか（正規表現: / /g）を切り替え
                 const regex = squashSpaces.value ? / +/g : / /g;
-                
                 return inputText.value.replace(regex, '\n');
             });
 
+            // クリップボードコピー & トーストアニメーション処理
             const copyToClipboard = () => {
                 if (!processedCode.value) return;
-                navigator.clipboard.writeText(processedCode.value);
-                alert("コピーしました！");
+
+                navigator.clipboard.writeText(processedCode.value).then(() => {
+                    toastMessage.value = "コピーしました！";
+                    showToast();
+                }).catch(err => {
+                    console.error('コピーに失敗しました: ', err);
+                });
             };
 
-            return { inputText, squashSpaces, processedCode, copyToClipboard };
+            // トーストの表示制御関数
+            const showToast = () => {
+                isToastShow.value = true;
+
+                clearTimeout(toastTimeout);
+                toastTimeout = setTimeout(() => {
+                    isToastShow.value = false;
+                }, 2000);
+            };
+
+            return { 
+                inputText, 
+                squashSpaces, 
+                processedCode, 
+                copyToClipboard,
+                isToastShow,
+                toastMessage
+            };
         }
-    }).mount('#app'); // ここで指定した #app が mainタグの id="app" と紐付きます
+    }).mount('#app');
 </script>
 </body>
 </html>
