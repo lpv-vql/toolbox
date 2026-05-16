@@ -13,10 +13,6 @@
         .field-container {
             margin-bottom: 35px;
         }
-        .btn-group {
-            margin-top: 8px;
-            display: flex;
-        }
         .status {
             color: #e74c3c;
             min-height: 20px;
@@ -38,18 +34,14 @@
     <div class="field-container">
         <h2>テキスト (生データ)</h2>
         <textarea class="code-editor" id="text-input" spellcheck="false" onclick="this.select()"></textarea>
-        <div class="btn-group">
-            <button id="copy-text-btn">コピー</button>
-        </div>
+        <button id="copy-text-btn">コピー</button>
     </div>
 
     <div class="field-container">
         <h2>URLエンコード文字列 (%xx)</h2>
         <textarea class="code-editor" id="encoded-input" spellcheck="false" onclick="this.select()"></textarea>
         <div id="error-status" class="status"></div>
-        <div class="btn-group">
-            <button id="copy-encoded-btn">コピー</button>
-        </div>
+        <button id="copy-encoded-btn">コピー</button>
     </div>
 
     <div class="toast" id="toast">コピーしました！</div>
