@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Markdownプレビュー</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,22 +11,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../style.css">
     <style>
-        textarea {
-            width: 100%;
-            height: 100%;
-            resize: none;
-            font-family: 'Courier New', Courier, monospace;
-            padding: 15px;
-            font-size: 16px;
-        }
-        .preview-area {
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            padding: 15px;
-            overflow-y: auto;
-            background-color: #fff;
-            color: #333;
-        }
+      .preview-area {
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 15px;
+        overflow-y: auto;
+        background-color: #fff;
+        color: #333;
+      }
     </style>
 </head>
 <body>
@@ -40,7 +31,7 @@
     <h1>Markdownプレビュー</h1>
     <div>
       <h2>Markdownを入力してください</h2>
-      <textarea id="markdown-input" placeholder="# ここにMarkdownを入力してください...&#10;&#10;- リスト1&#10;- リスト2&#10;&#10;**太字** や *斜体* も使えます。"></textarea>
+      <textarea id="markdown-input" class="code-editor"></textarea>
     </div>
 
     <div id="preview" class="preview-area"></div>
