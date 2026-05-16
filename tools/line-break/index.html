@@ -21,17 +21,17 @@
   <a href="/toolbox" class="logo">Toolbox</a>
 </header>
 
-<main>
-<h1>半角スペースを改行に</h1>
+<main id="app">
+    <h1>半角スペースを改行に</h1>
+    
+    <h2>テキストを入力してください</h2>
+    <textarea class="code-editor" v-model="inputText" placeholder="ここにコードをペースト..."></textarea>
 
-<h2>テキストを入力してください</h2>
-<textarea class="code-editor" v-model="inputText" placeholder="ここにコードをペースト..."></textarea>
-
-<div class="output-area">
-  <h2>変換結果</h2>
-  <pre><code>{{ processedCode }}</code></pre>
-  <button class="copy-btn" @click="copyToClipboard">結果をコピー</button>
-</div>
+    <div class="output-area">
+        <h2>変換結果</h2>
+        <pre><code>{{ processedCode }}</code></pre>
+        <button class="copy-btn" @click="copyToClipboard">結果をコピー</button>
+    </div>
 </main>
 
 <script>
@@ -61,7 +61,7 @@
 
             return { inputText, squashSpaces, processedCode, copyToClipboard };
         }
-    }).mount('#app');
+    }).mount('#app'); // ここで指定した #app が mainタグの id="app" と紐付きます
 </script>
 </body>
 </html>
