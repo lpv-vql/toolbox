@@ -71,7 +71,6 @@
     }
 
    button { 
-    flex: 1;
     margin-top: 10px;
     padding: 10px 20px;
     background: #444;
@@ -80,6 +79,7 @@
     border-radius: 4px;
     cursor: pointer;
   }
+
   button:hover {
     background-color: #888;
   }
