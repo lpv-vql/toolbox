@@ -45,6 +45,12 @@
       padding: 48px;
     }
 
+    h1 {
+      font-weight: 400;
+      font-size: 50px;
+      margin-top: 0;
+    }
+
     h2 {
       margin: 0 0 16px;
       font-size: 18px;
