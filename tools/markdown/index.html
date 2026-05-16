@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdownプレビュー</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        textarea {
+            width: 100%;
+            height: 100%;
+            resize: none;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 15px;
+            font-size: 16px;
+        }
+        .preview-area {
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 15px;
+            overflow-y: auto;
+            background-color: #fff;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+  <header>
+    <a href="/toolbox" class="logo">Toolbox</a>
+  </header>
+
+  <main>
+    <div>
+      <textarea id="markdown-input" placeholder="# ここにMarkdownを入力してください...&#10;&#10;- リスト1&#10;- リスト2&#10;&#10;**太字** や *斜体* も使えます。"></textarea>
+    </div>
+
+    <div id="preview" class="preview-area"></div>
+  </main>
+
+  <script>
+        const markdownInput = document.getElementById('markdown-input');
+        const preview = document.getElementById('preview');
+
+        // MarkdownをHTMLに変換してプレビューに反映する関数
+        function updatePreview() {
+            const markdownText = markdownInput.value;
+            // marked.parse() でMarkdownをHTML文字列に変換
+            preview.innerHTML = marked.parse(markdownText);
+        }
+
+        // 入力されるたびに（リアルタイムで）更新を実行
+        markdownInput.addEventListener('input', updatePreview);
+
+        // 初期実行（プレビューを空にしないため）
+        updatePreview();
+    </script>
+
+</body>
+</html>
