@@ -19,15 +19,12 @@
     </style>
 </head>
 <body>
-
 <header>
   <a href="/toolbox" class="logo">Toolbox</a>
 </header>
-
 <main>
 <div id="app" class="container">
     <h1>インデント幅調整</h1>
-    
     <div class="controls">
         <div>
             <label>各行のインデント幅</label>
@@ -47,43 +44,65 @@
         <pre><code>{{ processedCode }}</code></pre>
         <button class="copy-btn" @click="copyToClipboard">結果をコピー</button>
     </div>
+
+    <div class="toast" :class="{ show: isToastShow }">{{ toastMessage }}</div>
 </div>
 </main>
 
 <script>
     const { createApp, ref, computed } = Vue;
-
     createApp({
         setup() {
             const inputText = ref("");
             const indentSize = ref(2); // 1段階ごとのスペース数
             const baseOffset = ref(0); // 大元のインデント
 
+            // トースト用のリアクティブデータ
+            const isToastShow = ref(false);
+            const toastMessage = ref("コピーしました！");
+            let toastTimeout = null;
+
             const processedCode = computed(() => {
                 const lines = inputText.value.split('\n');
-                
                 return lines.map(line => {
-                    // 現在の行が持っている先頭の空白をカウント
                     const leadingSpaces = line.match(/^ */)[0].length;
-                    // もともとのインデントレベルを推測（2スペース想定で計算）
-                    // ※より正確にするなら「元々の1レベルあたりの数」の設定も必要ですが、
-                    // ここでは入力の空白を1レベル＝2スペースと仮定して再計算します。
-                    const level = Math.floor(leadingSpaces / 2); 
-                    
+                    const level = Math.floor(leadingSpaces / 2);
                     const newIndent = ' '.repeat(baseOffset.value + (level * indentSize.value));
                     return newIndent + line.trimStart();
                 }).join('\n');
             });
 
+            // クリップボードコピー & トーストアニメーション処理
             const copyToClipboard = () => {
-                navigator.clipboard.writeText(processedCode.value);
-                alert("コピーしました！");
+                navigator.clipboard.writeText(processedCode.value).then(() => {
+                    toastMessage.value = "コピーしました！";
+                    showToast();
+                }).catch(err => {
+                    console.error('コピーに失敗しました: ', err);
+                });
             };
 
-            return { inputText, indentSize, baseOffset, processedCode, copyToClipboard };
+            // トーストの表示制御関数
+            const showToast = () => {
+                isToastShow.value = true;
+
+                clearTimeout(toastTimeout);
+                toastTimeout = setTimeout(() => {
+                    isToastShow.value = false;
+                }, 2000);
+            };
+
+            return { 
+                inputText, 
+                indentSize, 
+                baseOffset, 
+                processedCode, 
+                copyToClipboard,
+                isToastShow,
+                toastMessage
+            };
         }
     }).mount('#app');
 </script>
-
 </body>
 </html>
