@@ -10,6 +10,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../style.css">
     <style>
+        .code-editor {
+            height: 150px;
+        }
         .field-container {
             margin-bottom: 35px;
         }
@@ -38,7 +41,7 @@
     </div>
 
     <div class="field-container">
-        <h2>URLエンコード文字列 (%xx)</h2>
+        <h2>URLエンコード文字列</h2>
         <textarea class="code-editor" id="encoded-input" spellcheck="false" onclick="this.select()"></textarea>
         <div id="error-status" class="status"></div>
         <button id="copy-encoded-btn">コピー</button>
