@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>URLエンコーダー / デコーダー</title>
+    <title>リアルタイム URLエンコーダー / デコーダー</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
@@ -11,8 +11,11 @@
     <link rel="stylesheet" href="../style.css">
     <style>
         .field-container {
-            margin-bottom: 25px;
-            position: relative;
+            margin-bottom: 35px;
+        }
+        .btn-group {
+            margin-top: 8px;
+            display: flex;
         }
         .status {
             color: #e74c3c;
@@ -21,19 +24,12 @@
             font-weight: bold;
             font-size: 0.85rem;
         }
-        .hint {
-            position: absolute;
-            right: 10px;
-            top: 0;
-            font-size: 0.75rem;
-            color: #999;
-        }
     </style>
 </head>
 <body>
 
 <header>
-    <a href="#" class="logo">Toolbox</a>
+    <a href="/toolbox" class="logo">Toolbox</a>
 </header>
 
 <main>
@@ -41,17 +37,19 @@
     
     <div class="field-container">
         <h2>テキスト (生データ)</h2>
-        <p>日本語などの通常のテキスト。入力すると下の欄にエンコードされます。</p>
-        <span class="hint">クリックで全選択</span>
-        <textarea class="code-editor" id="text-input" placeholder="例：こんにちは" spellcheck="false" onclick="this.select()"></textarea>
+        <textarea class="code-editor" id="text-input" spellcheck="false" onclick="this.select()"></textarea>
+        <div class="btn-group">
+            <button id="copy-text-btn">コピー</button>
+        </div>
     </div>
 
     <div class="field-container">
         <h2>URLエンコード文字列 (%xx)</h2>
-        <p>URL用の形式。ここにペーストするか入力すると、上の欄にデコードされます。</p>
-        <span class="hint">クリックで全選択</span>
-        <textarea class="code-editor" id="encoded-input" placeholder="例：%E3%81%93%E3%82%93%E3%81%AB%E3%81%A1%E3%81%AF" spellcheck="false" onclick="this.select()"></textarea>
+        <textarea class="code-editor" id="encoded-input" spellcheck="false" onclick="this.select()"></textarea>
         <div id="error-status" class="status"></div>
+        <div class="btn-group">
+            <button id="copy-encoded-btn">コピー</button>
+        </div>
     </div>
 
     <div class="toast" id="toast">コピーしました！</div>
@@ -61,53 +59,64 @@
     const textInput = document.getElementById('text-input');
     const encodedInput = document.getElementById('encoded-input');
     const errorStatus = document.getElementById('error-status');
+    
+    const copyTextBtn = document.getElementById('copy-text-btn');
+    const copyEncodedBtn = document.getElementById('copy-encoded-btn');
 
-    // テキスト側が入力されたら、エンコードしてURL側へ
+    // --- リアルタイム変換処理 ---
+    
+    // テキスト側入力時
     textInput.addEventListener('input', () => {
         const rawText = textInput.value;
-        
         if (!rawText) {
             encodedInput.value = '';
             errorStatus.innerText = '';
             return;
         }
-
         encodedInput.value = encodeURIComponent(rawText);
-        errorStatus.innerText = ''; // テキストからのエンコードでエラーは起きないためクリア
+        errorStatus.innerText = '';
     });
 
-    // URL側が入されたら、デコードしてテキスト側へ
+    // URL側入力時
     encodedInput.addEventListener('input', () => {
         const encodedText = encodedInput.value;
-
         if (!encodedText) {
             textInput.value = '';
             errorStatus.innerText = '';
             return;
         }
-
         try {
             textInput.value = decodeURIComponent(encodedText);
-            errorStatus.innerText = ''; // 成功したらエラーを消す
+            errorStatus.innerText = '';
         } catch (e) {
-            // 不完全な%記述（%単体や、末尾が途切れているなど）の時にエラー表示
             errorStatus.innerText = '変換エラー: 正しいURLエンコード形式ではありません（文字列が途切れている可能性があります）';
         }
     });
 
-    // 元のコードの「クリックしてコピー」の快適さを残すため、
-    // テキストエリアをクリックした時に自動全選択＆自動クリップボードコピーにする親切設計
-    [textInput, encodedInput].forEach(textarea => {
-        textarea.addEventListener('click', () => {
-            if (textarea.value) {
-                navigator.clipboard.writeText(textarea.value)
-                    .then(() => showToast('クリップボードにコピーしました！'))
-                    .catch(() => {}); // 失敗時はトーストを出さない
-            }
-        });
+    // --- コピーボタンの処理 ---
+
+    copyTextBtn.addEventListener('click', () => {
+        textInput.select();
+        copyToClipboard(textInput.value);
     });
 
-    // トーストアニメーション制御
+    copyEncodedBtn.addEventListener('click', () => {
+        encodedInput.select();
+        copyToClipboard(encodedInput.value);
+    });
+
+    // クリップボードコピー＆トースト表示共通関数
+    function copyToClipboard(text) {
+        if (!text) return; // 空のときはコピーしない
+        navigator.clipboard.writeText(text)
+            .then(() => {
+                showToast("コピーしました！");
+            })
+            .catch(() => {
+                showToast("コピーに失敗しました。手動でコピーしてください。");
+            });
+    }
+
     let toastTimeout;
     function showToast(message) {
         const toast = document.getElementById('toast');
