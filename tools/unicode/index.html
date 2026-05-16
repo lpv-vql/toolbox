@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unicode一括生成</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        .code-editor { height: 200px; font-size: 1.2rem; letter-spacing: 0.1em; word-break: break-all; }
+        label { display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px; }
+        input[type="text"] { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: 'Montserrat', sans-serif; text-transform: uppercase; }
+        .output-area { margin-top: 20px; }
+        .error-text { color: red; font-size: 0.9rem; margin-top: 5px; min-height: 1.2em; }
+    </style>
+</head>
+<body>
+
+<header>
+  <a href="/toolbox" class="logo">Toolbox</a>
+</header>
+
+<main>
+<div id="app" class="container">
+    <h1>Unicode一括生成</h1>
+    
+    <div class="controls">
+        <div>
+            <label>開始コード (16進数)</label>
+            <input type="text" v-model="startHex" placeholder="2100">
+        </div>
+        <div>
+            <label>終了コード (16進数)</label>
+            <input type="text" v-model="endHex" placeholder="214F">
+        </div>
+    </div>
+
+    <div class="error-text">{{ errorMessage }}</div>
+
+    <div class="output-area">
+        <h2>生成結果</h2>
+        <textarea class="code-editor" readonly :value="generatedText" placeholder="ここに文字が連結されて出力されます..."></textarea>
+        <button class="copy-btn" @click="copyToClipboard" :disabled="!generatedText">結果をコピー</button>
+    </div>
+</div>
+</main>
+
+<script>
+    const { createApp, ref, computed } = Vue;
+
+    createApp({
+        setup() {
+            const startHex = ref("2100");
+            const endHex = ref("214F");
+            const errorMessage = ref("");
+
+            const generatedText = computed(() => {
+                errorMessage.value = "";
+                
+                const start = parseInt(startHex.value, 16);
+                const end = parseInt(endHex.value, 16);
+
+                if (!startHex.value || !endHex.value) return "";
+
+                if (isNaN(start) || isNaN(end)) {
+                    errorMessage.value = "有効な16進数を入力してください。";
+                    return "";
+                }
+
+                if (start > end) {
+                    errorMessage.value = "開始コードは終了コード以下の値を入力してください。";
+                    return "";
+                }
+
+                // 大量生成によるブラウザフリーズ防止（最大5000文字）
+                const count = end - start + 1;
+                if (count > 5000) {
+                    errorMessage.value = `範囲が広すぎます（計 ${count} 文字）。5000文字以内で指定してください。`;
+                    return "";
+                }
+
+                let result = "";
+                for (let i = start; i <= end; i++) {
+                    result += String.fromCodePoint(i);
+                }
+                return result;
+            });
+
+            const copyToClipboard = () => {
+                if (!generatedText.value) return;
+                navigator.clipboard.writeText(generatedText.value);
+                alert("コピーしました！");
+            };
+
+            return { startHex, endHex, generatedText, errorMessage, copyToClipboard };
+        }
+    }).mount('#app');
+</script>
+
+</body>
+</html>
