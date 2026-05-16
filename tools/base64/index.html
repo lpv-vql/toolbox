@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base64エンコーダー / デコーダー</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css">
+    <style>        
+        .editor-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .textarea-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .code-editor { 
+            height: 200px; 
+        }
+        .btn-group { 
+            display: flex; 
+            gap: 10px; 
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+        button { 
+            flex: 1; 
+        }
+        .status { 
+            color: #e74c3c; 
+            margin-top: 5px; 
+            font-weight: bold; 
+            min-height: 24px;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <a href="/toolbox" class="logo">Toolbox</a>
+</header>
+<main>
+    <h1>Base64エンコーダー / デコーダー</h1>
+    
+    <div class="editor-container">
+        <div class="textarea-group">
+            <h2>1. テキスト (UTF-8)</h2>
+            <textarea class="code-editor" id="text-input" placeholder="ここに変換したいテキストを入力してください..." spellcheck="false"></textarea>
+        </div>
+
+        <div class="btn-group">
+            <button id="btn-encode" class="btn-overwrite">エンコード ⬇ (Base64へ)</button>
+            <button id="btn-decode" class="btn-new">デコード ⬆ (テキストへ)</button>
+        </div>
+
+        <div class="textarea-group">
+            <h2>2. Base64文字列</h2>
+            <textarea class="code-editor" id="base64-input" placeholder="ここにBase64文字列を入力してください..." spellcheck="false"></textarea>
+            <div id="status" class="status"></div>
+        </div>
+    </div>
+</main>
+    
+<script>
+    const textInput = document.getElementById('text-input');
+    const base64Input = document.getElementById('base64-input');
+    const statusMsg = document.getElementById('status');
+
+    // 1. テキストからBase64へ（エンコード）
+    document.getElementById('btn-encode').onclick = () => {
+        statusMsg.innerText = "";
+        const text = textInput.value;
+        
+        if (!text) {
+            base64Input.value = "";
+            return;
+        }
+
+        try {
+            // JavaScriptの標準の btoa() はUTF-8のマルチバイト（日本語など）に非対応なため、
+            // TextEncoderで一旦Uint8ArrayにしてからBase64に変換します。
+            const uint8Array = new TextEncoder().encode(text);
+            let binString = "";
+            for (let i = 0; i < uint8Array.length; i++) {
+                binString += String.fromCharCode(uint8Array[i]);
+            }
+            const base64Result = btoa(binString);
+            base64Input.value = base64Result;
+        } catch (err) {
+            statusMsg.innerText = "エラー: エンコードに失敗しました。";
+        }
+    };
+
+    // 2. Base64からテキストへ（デコード）
+    document.getElementById('btn-decode').onclick = () => {
+        statusMsg.innerText = "";
+        const base64Str = base64Input.value.trim().replace(/\s/g, ""); // 空白や改行を除去
+        
+        if (!base64Str) {
+            textInput.value = "";
+            return;
+        }
+
+        try {
+            // btoaの逆の手順で、Base64をバイナリ文字列にし、Uint8Array経由でUTF-8テキストに戻します。
+            const binString = atob(base64Str);
+            const uint8Array = new Uint8Array(binString.length);
+            for (let i = 0; i < binString.length; i++) {
+                uint8Array[i] = binString.charCodeAt(i);
+            }
+            const decodedText = new TextDecoder().decode(uint8Array);
+            textInput.value = decodedText;
+        } catch (err) {
+            statusMsg.innerText = "エラー: 正しいBase64文字列ではありません。";
+        }
+    };
+</script>
+
+</body>
+</html>
