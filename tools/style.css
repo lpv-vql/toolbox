@@ -60,7 +60,6 @@
     .code-editor { 
       width: 100%;
       font-family: 'Consolas', 'Monaco', monospace; 
-      margin-top: 5px;
       margin-bottom: 15px;
       padding: 10px;
       border: 1px solid #ccc;
