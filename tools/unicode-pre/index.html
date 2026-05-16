@@ -128,10 +128,9 @@
 
   <main>
     <h1>指定した範囲のUnicodeの文字出力</h1>
-    <div class="tool-container">
-      <h2>表示したいUnicodeの範囲を16進数で指定してください。（※ブラウザの負荷軽減のため、一度に表示できる最大数は2000文字に制限しています）</h2>
+    <h2>表示したいUnicodeの範囲を16進数で指定してください。（一度に表示できる最大数は2000文字です）</h2>
 
-      <div class="input-group">
+    <div class="input-group">
         <div class="input-field">
           <label for="start-code">開始 (16進数)</label>
           <input type="text" id="start-code" value="2100" placeholder="2100">
@@ -146,7 +145,6 @@
 
       <div class="info-text" id="result-count"></div>
       <div class="char-grid" id="char-grid"></div>
-    </div>
 
     <div class="toast" id="toast">コピーしました！</div>
   </main>
