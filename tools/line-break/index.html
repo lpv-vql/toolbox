@@ -3,50 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>半角スペースを改行に変換</title>
+    <title>半角スペースを改行に</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../style.css">
     <style>
-      .code-editor { height: 200px; }
+        .code-editor { height: 200px; }
+        .output-area { margin-top: 20px; }
     </style>
 </head>
 <body>
-  <header>
-    <a href="/toolbox" class="logo">Toolbox</a>
-  </header>
 
-  <main>
-    <h1>半角スペースを改行に変換</h1>
-    <h2>テキストを入力</h2>
-    <textarea id="inputText" class="code-editor" oninput="convertSpaceToNewline()" placeholder=""></textarea>
+<header>
+  <a href="/toolbox" class="logo">Toolbox</a>
+</header>
 
-    <h2>変換後の結果</h2>
-    <textarea id="outputText" readonly placeholder=""></textarea>
-    <button class="btn-copy" onclick="copyToClipboard()">結果をコピー</button>
-  </main>
+<main>
+<h1>半角スペースを改行に</h1>
 
-    <script>
-        function convertSpaceToNewline() {
-            const input = document.getElementById('inputText').value;
-            // 入力された内容の半角スペースをすべて改行に置換
-            const converted = input.replace(/ /g, '\n');
-            document.getElementById('outputText').value = converted;
+<h2>テキストを入力してください</h2>
+<textarea class="code-editor" v-model="inputText" placeholder="ここにコードをペースト..."></textarea>
+
+<div class="output-area">
+  <h2>変換結果</h2>
+  <pre><code>{{ processedCode }}</code></pre>
+  <button class="copy-btn" @click="copyToClipboard">結果をコピー</button>
+</div>
+</main>
+
+<script>
+    const { createApp, ref, computed } = Vue;
+
+    createApp({
+        setup() {
+            const inputText = ref("");
+            const squashSpaces = ref(false); // 連続スペースをまとめるかどうかのフラグ
+
+            // リアルタイムで変換処理を行う算出プロパティ
+            const processedCode = computed(() => {
+                if (!inputText.value) return "";
+                
+                // 連続するスペースを1つにまとめる（正規表現: / +/g）か、
+                // 1スペースごとに実直に改行するか（正規表現: / /g）を切り替え
+                const regex = squashSpaces.value ? / +/g : / /g;
+                
+                return inputText.value.replace(regex, '\n');
+            });
+
+            const copyToClipboard = () => {
+                if (!processedCode.value) return;
+                navigator.clipboard.writeText(processedCode.value);
+                alert("コピーしました！");
+            };
+
+            return { inputText, squashSpaces, processedCode, copyToClipboard };
         }
-
-        function copyToClipboard() {
-            const outputText = document.getElementById('outputText');
-            if (!outputText.value) {
-                alert('コピーするコンテンツがありません。');
-                return;
-            }
-            outputText.select();
-            document.execCommand('copy');
-            alert('クリップボードにコピーしました！');
-        }
-    </script>
-
+    }).mount('#app');
+</script>
 </body>
 </html>
