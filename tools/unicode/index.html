@@ -44,7 +44,7 @@
 
     <div class="output-area">
         <h2>生成結果</h2>
-        <textarea class="code-editor" readonly :value="generatedText" placeholder="ここに文字が連結されて出力されます..."></textarea>
+        <textarea class="code-editor" readonly :value="generatedText"></textarea>
         <button class="copy-btn" @click="copyToClipboard" :disabled="!generatedText">結果をコピー</button>
     </div>
 </div>
