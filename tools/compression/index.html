@@ -52,7 +52,7 @@ const copyEncodedBtn = document.getElementById('copy-encoded-btn');
 const CH_SET = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
 const BASE = 95;
 
-// 使用するUnicodeの開始位置（安全で表示崩れしにくい「一」などの漢字・統合漢字エリアを避けた、CJK統合漢字拡張A付近の不使用・あるいは使いやすい領域：ここでは0x4E00〜を使用）
+// 使用するUnicodeの開始位置（CJK統合漢字の「一」から始まる領域。1文字で綺麗に表現可能）
 const OFFSET = 0x4E00; 
 
 // 1. 圧縮 (ASCII 3文字 -> Unicode 1文字)
@@ -60,18 +60,19 @@ function compressASCII(str) {
     if (!str) return "";
     
     let result = "";
-    // 3文字ずつ処理
+    
+    // 文字列の先頭に、元の文字数を3で割った余り（0, 1, 2）を識別するための情報を1文字として埋め込むのは非効率なので、
+    // 最初の1文字目に余りの情報（0〜2）をエンコード時に混ぜ込みます。
+    const mod = str.length % 3;
+
     for (let i = 0; i < str.length; i += 3) {
         let chunk = str.substring(i, i + 3);
         
-        // パディング（3文字に満たない場合の処理）
-        let padCount = 0;
+        // パディング（3文字に満たない場合はスペースで埋める）
         while (chunk.length < 3) {
-            chunk += " "; // 空白で埋める
-            padCount++;
+            chunk += " ";
         }
 
-        // 95進数として数値化
         const v0 = CH_SET.indexOf(chunk[0]);
         const v1 = CH_SET.indexOf(chunk[1]);
         const v2 = CH_SET.indexOf(chunk[2]);
@@ -80,19 +81,16 @@ function compressASCII(str) {
             throw new Error("指定外の文字が含まれています");
         }
 
-        // 3文字分の数値を1つの巨大な値にする (最大: 95^3 - 1 = 857,374)
-        // JavaScriptのString.fromCodePointは 0x10FFFF まで対応しているので、
-        // 1文字で最大 1,114,111 までの数値を格納できます。余裕で入ります。
-        const num = v0 + v1 * BASE + v2 * BASE * BASE;
+        // 95進数の計算 (最大: 95^3 - 1 = 857,374)
+        let num = v0 + v1 * BASE + v2 * BASE * BASE;
         
-        // パディング情報を数値に混ぜ込む（復元時のため）
-        // 数値の範囲をシフトさせてパディングを識別
-        // numの最大値は 857,374 なので、十分に安全なオフセットを足す
-        let finalNum = num;
-        if (padCount === 1) finalNum += 1000000;
-        if (padCount === 2) finalNum += 2000000;
+        // 最初のブロックの計算にのみ、余りの情報（0, 1, 2）を組み込む
+        // 857,375 * 3 = 2,572,125 になり、これも1文字（Unicodeの範囲内）に安全に収まります
+        if (i === 0) {
+            num = num * 3 + mod;
+        }
 
-        result += String.fromCodePoint(OFFSET + finalNum);
+        result += String.fromCodePoint(OFFSET + num);
     }
     return result;
 }
@@ -102,19 +100,18 @@ function decompressASCII(str) {
     if (!str) return "";
     
     let result = "";
+    let mod = 0;
+
     for (let i = 0; i < str.length; i++) {
         const codePoint = str.codePointAt(i);
         let num = codePoint - OFFSET;
         
         if (num < 0) throw new Error("無効な文字データです");
 
-        let padCount = 0;
-        if (num >= 2000000) {
-            padCount = 2;
-            num -= 2000000;
-        } else if (num >= 1000000) {
-            padCount = 1;
-            num -= 1000000;
+        // 最初のブロックから余りの情報（元の長さを3で割った余り）を取り出す
+        if (i === 0) {
+            mod = num % 3;
+            num = Math.floor(num / 3);
         }
 
         // 95進数を分解して元の3文字に戻す
@@ -124,15 +121,16 @@ function decompressASCII(str) {
         const v2 = Math.floor(num / BASE);
 
         if (v0 >= BASE || v1 >= BASE || v2 >= BASE) {
-            throw new Error("復元エラー: 正しい圧縮データではありません");
+            throw new Error("復元エラー");
         }
 
         let chunk = CH_SET[v0] + CH_SET[v1] + CH_SET[v2];
         
-        // パディングされていた分を削る
-        if (padCount > 0) {
-            chunk = chunk.substring(0, 3 - padCount);
+        // ループの最後（最後の3文字ブロック）かつ、元のデータに端数があった場合の処理
+        if (i === str.length - 1 && mod > 0) {
+            chunk = chunk.substring(0, mod);
         }
+        
         result += chunk;
     }
     return result;
@@ -148,6 +146,12 @@ textInput.addEventListener('input', () => {
         return;
     }
     try {
+        // 入力文字列に指定外の文字がないか事前チェック
+        for (let char of rawText) {
+            if (CH_SET.indexOf(char) === -1) {
+                throw new Error();
+            }
+        }
         encodedInput.value = compressASCII(rawText);
         errorStatus.innerText = '';
     } catch (e) {
@@ -166,6 +170,7 @@ encodedInput.addEventListener('input', () => {
         textInput.value = decompressASCII(encodedText);
         errorStatus.innerText = '';
     } catch (e) {
+        textInput.value = '';
         errorStatus.innerText = '変換エラー: 正しい圧縮形式ではありません。';
     }
 });
