@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>テキスト圧縮・展開</title>
+    <title>ASCII文字 1/3圧縮ツール</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
@@ -21,16 +21,18 @@
 </header>
 
 <main>
-    <h1>テキスト圧縮・展開</h1>
+    <h1>ASCII文字 1/3圧縮ツール</h1>
     
     <div class="field-container">
-        <h2>テキスト</h2>
+        <h2>テキスト (元のASCIIデータ)</h2>
+        <p>指定の英数字・記号のみのテキストを入力してください（文字数が1/3に圧縮されます）</p>
         <textarea class="code-editor" id="text-input" spellcheck="false" onclick="this.select()"></textarea>
         <button id="copy-text-btn">コピー</button>
     </div>
 
     <div class="field-container">
-        <h2>圧縮済み文字列</h2>
+        <h2>圧縮された文字列 (Unicode)</h2>
+        <p>めいっぱいUnicode文字を使って短縮されたデータが出力されます（デコードも可能）</p>
         <textarea class="code-editor" id="encoded-input" spellcheck="false" onclick="this.select()"></textarea>
         <div id="error-status" class="status"></div>
         <button id="copy-encoded-btn">コピー</button>
@@ -46,81 +48,98 @@ const errorStatus = document.getElementById('error-status');
 const copyTextBtn = document.getElementById('copy-text-btn');
 const copyEncodedBtn = document.getElementById('copy-encoded-btn');
 
-// --- Base91風の圧縮・復元ロジック ---
-// 指定された 95 文字のASCII文字セット
+// 指定された 95 文字の辞書
 const CH_SET = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+const BASE = 95;
 
-// 1. 圧縮 (Unicode文字列 -> 指定ASCII文字列)
-function compressText(str) {
+// 使用するUnicodeの開始位置（安全で表示崩れしにくい「一」などの漢字・統合漢字エリアを避けた、CJK統合漢字拡張A付近の不使用・あるいは使いやすい領域：ここでは0x4E00〜を使用）
+const OFFSET = 0x4E00; 
+
+// 1. 圧縮 (ASCII 3文字 -> Unicode 1文字)
+function compressASCII(str) {
     if (!str) return "";
-    // UTF-8のバイト配列に変換
-    const bytes = new TextEncoder().encode(str);
-    let ret = "";
-    let n = 0;
-    let b = 0;
     
-    for (let i = 0; i < bytes.length; i++) {
-        n |= bytes[i] << b;
-        b += 8;
-        if (b > 13) {
-            let v = n & 8191;
-            if (v > 88) {
-                n >>= 13;
-                b -= 13;
-            } else {
-                v = n & 16383;
-                n >>= 14;
-                b -= 14;
-            }
-            ret += CH_SET[v % 91] + CH_SET[Math.floor(v / 91)];
+    let result = "";
+    // 3文字ずつ処理
+    for (let i = 0; i < str.length; i += 3) {
+        let chunk = str.substring(i, i + 3);
+        
+        // パディング（3文字に満たない場合の処理）
+        let padCount = 0;
+        while (chunk.length < 3) {
+            chunk += " "; // 空白で埋める
+            padCount++;
         }
-    }
-    if (b > 0) {
-        ret += CH_SET[n % 91];
-        if (b > 7 || n >= 91) {
-            ret += CH_SET[Math.floor(n / 91)];
+
+        // 95進数として数値化
+        const v0 = CH_SET.indexOf(chunk[0]);
+        const v1 = CH_SET.indexOf(chunk[1]);
+        const v2 = CH_SET.indexOf(chunk[2]);
+
+        if (v0 === -1 || v1 === -1 || v2 === -1) {
+            throw new Error("指定外の文字が含まれています");
         }
+
+        // 3文字分の数値を1つの巨大な値にする (最大: 95^3 - 1 = 857,374)
+        // JavaScriptのString.fromCodePointは 0x10FFFF まで対応しているので、
+        // 1文字で最大 1,114,111 までの数値を格納できます。余裕で入ります。
+        const num = v0 + v1 * BASE + v2 * BASE * BASE;
+        
+        // パディング情報を数値に混ぜ込む（復元時のため）
+        // 数値の範囲をシフトさせてパディングを識別
+        // numの最大値は 857,374 なので、十分に安全なオフセットを足す
+        let finalNum = num;
+        if (padCount === 1) finalNum += 1000000;
+        if (padCount === 2) finalNum += 2000000;
+
+        result += String.fromCodePoint(OFFSET + finalNum);
     }
-    return ret;
+    return result;
 }
 
-// 2. 伸長 (指定ASCII文字列 -> Unicode文字列)
-function decompressText(str) {
+// 2. 復元 (Unicode 1文字 -> ASCII 3文字)
+function decompressASCII(str) {
     if (!str) return "";
-    let bytes = [];
-    let n = 0;
-    let b = 0;
-    let v = -1;
-
-    for (let i = 0; i < str.length; i++) {
-        const c = CH_SET.indexOf(str[i]);
-        if (c === -1) throw new Error("無効な文字が含まれています");
-        
-        if (v < 0) {
-            v = c;
-        } else {
-            v += c * 91;
-            n |= v << b;
-            b += (v & 8191) > 88 ? 13 : 14;
-            do {
-                bytes.push(n & 255);
-                n >>= 8;
-                b -= 8;
-            } while (b > 7);
-            v = -1;
-        }
-    }
-    if (v >= 0) {
-        bytes.push((n | (v << b)) & 255);
-    }
     
-    // バイト配列を文字列に戻す
-    return new TextDecoder().decode(new Uint8Array(bytes));
+    let result = "";
+    for (let i = 0; i < str.length; i++) {
+        const codePoint = str.codePointAt(i);
+        let num = codePoint - OFFSET;
+        
+        if (num < 0) throw new Error("無効な文字データです");
+
+        let padCount = 0;
+        if (num >= 2000000) {
+            padCount = 2;
+            num -= 2000000;
+        } else if (num >= 1000000) {
+            padCount = 1;
+            num -= 1000000;
+        }
+
+        // 95進数を分解して元の3文字に戻す
+        const v0 = num % BASE;
+        num = Math.floor(num / BASE);
+        const v1 = num % BASE;
+        const v2 = Math.floor(num / BASE);
+
+        if (v0 >= BASE || v1 >= BASE || v2 >= BASE) {
+            throw new Error("復元エラー: 正しい圧縮データではありません");
+        }
+
+        let chunk = CH_SET[v0] + CH_SET[v1] + CH_SET[v2];
+        
+        // パディングされていた分を削る
+        if (padCount > 0) {
+            chunk = chunk.substring(0, 3 - padCount);
+        }
+        result += chunk;
+    }
+    return result;
 }
 
 // --- リアルタイム変換処理 ---
 
-// 生テキスト入力時（圧縮を実行）
 textInput.addEventListener('input', () => {
     const rawText = textInput.value;
     if (!rawText) {
@@ -129,14 +148,13 @@ textInput.addEventListener('input', () => {
         return;
     }
     try {
-        encodedInput.value = compressText(rawText);
+        encodedInput.value = compressASCII(rawText);
         errorStatus.innerText = '';
     } catch (e) {
-        errorStatus.innerText = '圧縮エラーが発生しました';
+        errorStatus.innerText = '変換エラー: 指定された95文字以外の文字（日本語など）が含まれています。';
     }
 });
 
-// 圧縮テキスト入力時（復元を実行）
 encodedInput.addEventListener('input', () => {
     const encodedText = encodedInput.value;
     if (!encodedText) {
@@ -145,10 +163,10 @@ encodedInput.addEventListener('input', () => {
         return;
     }
     try {
-        textInput.value = decompressText(encodedText);
+        textInput.value = decompressASCII(encodedText);
         errorStatus.innerText = '';
     } catch (e) {
-        errorStatus.innerText = '変換エラー: 正しい圧縮形式ではないか、指定外の文字が含まれています。';
+        errorStatus.innerText = '変換エラー: 正しい圧縮形式ではありません。';
     }
 });
 
@@ -163,7 +181,6 @@ copyEncodedBtn.addEventListener('click', () => {
     copyToClipboard(encodedInput.value);
 });
 
-// クリップボードコピー＆トースト表示共通関数
 function copyToClipboard(text) {
     if (!text) return; 
     navigator.clipboard.writeText(text)
