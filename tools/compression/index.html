@@ -32,7 +32,7 @@
 </header>
 
 <main>
-    <h1>テキスト圧縮・展開</h1>        
+    <h1>テキスト圧縮・展開</h1>            
     <div class="field-container">
         <h2>半角テキスト</h2>
         <div class="info-tag" id="text-count">文字数: 0</div>
@@ -43,7 +43,7 @@
     <div class="field-container">
         <h2>圧縮済み文字列</h2>
         <div class="info-tag" id="compressed-count">文字数: 0</div>
-        <textarea class="code-editor" id="compressed-input" spellcheck="false" placeholder="ここに圧縮された文字が出力されます" onclick="this.select()"></textarea>
+        <textarea class="code-editor" id="compressed-input" spellcheck="false" onclick="this.select()"></textarea>
         <div id="error-status" class="status"></div>
         <button id="copy-compressed-btn">コピー</button>
     </div>
@@ -57,91 +57,87 @@
     const errorStatus = document.getElementById('error-status');
     const textCount = document.getElementById('text-count');
     const compressedCount = document.getElementById('compressed-count');
-        
+            
     const copyTextBtn = document.getElementById('copy-text-btn');
     const copyCompressedBtn = document.getElementById('copy-compressed-btn');
 
-    // 漢字拡張B領域の開始地点 (U+20000) をベースに使用
-    const BIAS = 0x20000; 
+    // CJK統合漢字の安全な開始地点 (U+4E00) をベースに使用
+    // 14ビット(16384通り)移動しても通常の漢字領域に収まるため絶対にブラウザで壊れません
+    const BIAS = 0x4E00; 
 
-    // 圧縮ロジック (3文字の7bitアスキーを1つの21bitコードポイントに結合)
-    function megaCompress(str) {
+    // 圧縮ロジック (半角2文字の7bitアスキーを1つの14bitコードポイントに結合)
+    function safeCompress(str) {
         if (!str) return '';
-        
         let result = '';
-        const chars = [...str];
         
-        for (let i = 0; i < chars.length; i += 3) {
-            let c1 = chars[i].charCodeAt(0) & 0x7F;
-            let c2 = (i + 1 < chars.length) ? (chars[i + 1].charCodeAt(0) & 0x7F) : 0x7F; 
-            let c3 = (i + 2 < chars.length) ? (chars[i + 2].charCodeAt(0) & 0x7F) : 0x7F;
+        for (let i = 0; i < str.length; i += 2) {
+            let c1 = str.charCodeAt(i) & 0x7F;
+            // 奇数文字目で終わる場合は、2文字目をダミー(0x7F)にする
+            let c2 = (i + 1 < str.length) ? (str.charCodeAt(i + 1) & 0x7F) : 0x7F;
             
-            const codePoint = BIAS + (c1 << 14) + (c2 << 7) + c3;
-            result += String.fromCodePoint(codePoint);
+            // 7bit × 2 = 14bit の数値を生成して漢字に変形
+            const codePoint = BIAS + (c1 << 7) + c2;
+            result += String.fromCharCode(codePoint);
         }
         return result;
     }
 
     // 展開ロジック
-    function megaDecompress(str) {
+    function safeDecompress(str) {
         if (!str) return '';
         let result = '';
         
-        for (const char of [...str]) {
-            const codePoint = char.codePointAt(0);
+        for (let i = 0; i < str.length; i++) {
+            const codePoint = str.charCodeAt(i);
             const offset = codePoint - BIAS;
             
-            if (offset < 0 || offset > 0x1FFFFF) {
+            // 漢字領域外の文字が含まれている場合のチェック
+            if (offset < 0 || offset > 0x3FFF) {
                 throw new Error("対応していない文字が含まれています");
             }
             
-            const c1 = (offset >> 14) & 0x7F;
-            const c2 = (offset >> 7) & 0x7F;
-            const c3 = offset & 0x7F;
+            // 14bitから7bitずつ2文字を切り出す
+            const c1 = (offset >> 7) & 0x7F;
+            const c2 = offset & 0x7F;
             
-            // ダミー値(0x7F)でなければ文字として復元
             if (c1 !== 0x7F) result += String.fromCharCode(c1);
             if (c2 !== 0x7F) result += String.fromCharCode(c2);
-            if (c3 !== 0x7F) result += String.fromCharCode(c3);
         }
         return result;
     }
 
     // --- カウンター更新 ---
     function updateCounts() {
-        textCount.innerText = `文字数: ${[...textInput.value].length}`;
-        compressedCount.innerText = `文字数: ${[...compressedInput.value].length}`;
+        textCount.innerText = `文字数: ${textInput.value.length}`;
+        compressedCount.innerText = `文字数: ${compressedInput.value.length}`;
     }
 
-    // 相互のイベント発火衝突を防ぐためのフラグ
-    let isUpdating = false;
+    // 入力イベントが無限ループで衝突するのを完全に防ぐフラグ
+    let lock = false;
 
     // --- リアルタイムイベント処理 ---
     textInput.addEventListener('input', () => {
-        if (isUpdating) return;
-        isUpdating = true;
+        if (lock) return;
+        lock = true;
 
         const rawText = textInput.value;
         
+        // 簡易的な全角チェック
         if (/[^\x00-\x7F]/.test(rawText)) {
-            errorStatus.innerText = '注意: 全角文字が含まれています。正しく圧縮・展開ができない可能性があります。';
+            errorStatus.innerText = '注意: 全角文字が含まれています。正しく圧縮できません。';
         } else {
             errorStatus.innerText = '';
         }
 
-        if (!rawText) {
-            compressedInput.value = '';
-        } else {
-            compressedInput.value = megaCompress(rawText);
-        }
+        compressedInput.value = safeCompress(rawText);
         
         updateCounts();
-        isUpdating = false;
+        lock = false;
     });
 
     compressedInput.addEventListener('input', () => {
-        if (isUpdating) return;
-        isUpdating = true;
+        if (lock) return;
+        lock = true;
 
         const compressedText = compressedInput.value;
         if (!compressedText) {
@@ -149,15 +145,16 @@
             errorStatus.innerText = '';
         } else {
             try {
-                textInput.value = megaDecompress(compressedText);
+                textInput.value = safeDecompress(compressedText);
                 errorStatus.innerText = '';
             } catch (e) {
                 errorStatus.innerText = '変換エラー: 正しい圧縮データではありません。';
+                textInput.value = '';
             }
         }
         
         updateCounts();
-        isUpdating = false;
+        lock = false;
     });
 
     // --- コピー＆トースト処理 ---
