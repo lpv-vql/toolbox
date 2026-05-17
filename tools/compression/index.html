@@ -63,6 +63,8 @@
 
     // 漢字拡張B領域の開始地点 (U+20000) をベースに使用
     const BIAS = 0x20000; 
+    // 7bit(0~127)の範囲外となる値をダミーパディングとして使用
+    const PADDING_VAL = 0x80;
 
     // 圧縮ロジック (3文字の7bitアスキーを1つの21bitコードポイントに結合)
     function megaCompress(str) {
@@ -73,8 +75,8 @@
         
         for (let i = 0; i < chars.length; i += 3) {
             let c1 = chars[i].charCodeAt(0) & 0x7F;
-            let c2 = (i + 1 < chars.length) ? (chars[i + 1].charCodeAt(0) & 0x7F) : 0x7F; 
-            let c3 = (i + 2 < chars.length) ? (chars[i + 2].charCodeAt(0) & 0x7F) : 0x7F;
+            let c2 = (i + 1 < chars.length) ? (chars[i + 1].charCodeAt(0) & 0x7F) : PADDING_VAL; 
+            let c3 = (i + 2 < chars.length) ? (chars[i + 2].charCodeAt(0) & 0x7F) : PADDING_VAL;
             
             const codePoint = BIAS + (c1 << 14) + (c2 << 7) + c3;
             result += String.fromCodePoint(codePoint);
@@ -99,9 +101,10 @@
             const c2 = (offset >> 7) & 0x7F;
             const c3 = offset & 0x7F;
             
-            if (c1 !== 0x7F) result += String.fromCharCode(c1);
-            if (c2 !== 0x7F) result += String.fromCharCode(c2);
-            if (c3 !== 0x7F) result += String.fromCharCode(c3);
+            // パディング値でなければ文字として復元
+            if (c1 !== PADDING_VAL) result += String.fromCharCode(c1);
+            if (c2 !== PADDING_VAL) result += String.fromCharCode(c2);
+            if (c3 !== PADDING_VAL) result += String.fromCharCode(c3);
         }
         return result;
     }
@@ -122,7 +125,7 @@
 
         const rawText = textInput.value;
 
-        // 改行やタブなどを許容しつつ、純粋な全角文字（キーコード127超）があるかチェック
+        // 純粋な全角文字（アスキー範囲外）があるかチェック
         const hasFullWidth = [...rawText].some(char => char.charCodeAt(0) > 0x7F);
         if (hasFullWidth) {
             errorStatus.innerText = '注意: 全角文字が含まれています。正しく圧縮できない可能性があります。';
