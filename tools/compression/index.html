@@ -51,7 +51,7 @@ const copyEncodedBtn = document.getElementById('copy-encoded-btn');
 const CH_SET = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
 const BASE = 95;
 
-// 使用するUnicodeの開始位置（CJK統合漢字の「一」から始まる領域。1文字で綺麗に表現可能）
+// 使用するUnicodeの開始位置（CJK統合漢字エリア：1文字で3文字分の情報を保持可能）
 const OFFSET = 0x4E00; 
 
 // 1. 圧縮 (ASCII 3文字 -> Unicode 1文字)
@@ -59,9 +59,7 @@ function compressASCII(str) {
     if (!str) return "";
     
     let result = "";
-    
-    // 文字列の先頭に、元の文字数を3で割った余り（0, 1, 2）を識別するための情報を1文字として埋め込むのは非効率なので、
-    // 最初の1文字目に余りの情報（0〜2）をエンコード時に混ぜ込みます。
+    // 元の文字列の長さを3で割った余り（0, 1, 2）
     const mod = str.length % 3;
 
     for (let i = 0; i < str.length; i += 3) {
@@ -72,9 +70,9 @@ function compressASCII(str) {
             chunk += " ";
         }
 
-        const v0 = CH_SET.indexOf(chunk[0]);
-        const v1 = CH_SET.indexOf(chunk[1]);
-        const v2 = CH_SET.indexOf(chunk[2]);
+        const v0 = CH_SET.indexOf(chunk.charAt(0));
+        const v1 = CH_SET.indexOf(chunk.charAt(1));
+        const v2 = CH_SET.indexOf(chunk.charAt(2));
 
         if (v0 === -1 || v1 === -1 || v2 === -1) {
             throw new Error("指定外の文字が含まれています");
@@ -83,13 +81,17 @@ function compressASCII(str) {
         // 95進数の計算 (最大: 95^3 - 1 = 857,374)
         let num = v0 + v1 * BASE + v2 * BASE * BASE;
         
-        // 最初のブロックの計算にのみ、余りの情報（0, 1, 2）を組み込む
-        // 857,375 * 3 = 2,572,125 になり、これも1文字（Unicodeの範囲内）に安全に収まります
+        // 最初の1文字目にのみ、余りの情報（0, 1, 2）を混ぜ込む
+        // 857,374 * 3 + 2 = 2,572,124 (Unicodeの最大値 1,114,111 を超えないよう、ここでは安全に足し算で保持)
+        // 1文字の最大値が 857,375 通りなので、modを区別するために num を 3倍するのではなく、
+        // 3つの状態ごとに基本となる値（OFFSET）をずらすアプローチに変更します。
+        let finalOffset = OFFSET;
         if (i === 0) {
-            num = num * 3 + mod;
+            // 最初のブロックだけ、mod(0,1,2) に応じて100,000ずつズラして配置
+            finalOffset += (mod * 100000);
         }
 
-        result += String.fromCodePoint(OFFSET + num);
+        result += String.fromCodePoint(finalOffset + num);
     }
     return result;
 }
@@ -101,17 +103,31 @@ function decompressASCII(str) {
     let result = "";
     let mod = 0;
 
-    for (let i = 0; i < str.length; i++) {
-        const codePoint = str.codePointAt(i);
+    // 最初の文字のCodePointからmod（余り）を逆算する
+    if (str.length > 0) {
+        const firstCode = str.codePointAt(0);
+        if (firstCode >= OFFSET + 200000) {
+            mod = 2;
+        } else if (firstCode >= OFFSET + 100000) {
+            mod = 1;
+        } else {
+            mod = 0;
+        }
+    }
+
+    // String.prototype.length ではなく、正しくUnicodeの文字数でループを回す
+    const chars = Array.from(str);
+
+    for (let i = 0; i < chars.length; i++) {
+        const codePoint = chars[i].codePointAt(0);
         let num = codePoint - OFFSET;
         
-        if (num < 0) throw new Error("無効な文字データです");
-
-        // 最初のブロックから余りの情報（元の長さを3で割った余り）を取り出す
+        // 最初の文字はmodのズレを直す
         if (i === 0) {
-            mod = num % 3;
-            num = Math.floor(num / 3);
+            num -= (mod * 100000);
         }
+        
+        if (num < 0) throw new Error("無効な文字データです");
 
         // 95進数を分解して元の3文字に戻す
         const v0 = num % BASE;
@@ -119,14 +135,14 @@ function decompressASCII(str) {
         const v1 = num % BASE;
         const v2 = Math.floor(num / BASE);
 
-        if (v0 >= BASE || v1 >= BASE || v2 >= BASE) {
+        if (v0 >= BASE || v1 >= BASE || v2 >= BASE || v0 < 0 || v1 < 0 || v2 < 0) {
             throw new Error("復元エラー");
         }
 
-        let chunk = CH_SET[v0] + CH_SET[v1] + CH_SET[v2];
+        let chunk = CH_SET.charAt(v0) + CH_SET.charAt(v1) + CH_SET.charAt(v2);
         
-        // ループの最後（最後の3文字ブロック）かつ、元のデータに端数があった場合の処理
-        if (i === str.length - 1 && mod > 0) {
+        // 最後のブロックかつ、元のデータに端数（余り）があった場合の処理
+        if (i === chars.length - 1 && mod > 0) {
             chunk = chunk.substring(0, mod);
         }
         
@@ -145,9 +161,9 @@ textInput.addEventListener('input', () => {
         return;
     }
     try {
-        // 入力文字列に指定外の文字がないか事前チェック
-        for (let char of rawText) {
-            if (CH_SET.indexOf(char) === -1) {
+        // 確実な方法（charAt）で指定外の文字が含まれていないかチェック
+        for (let i = 0; i < rawText.length; i++) {
+            if (CH_SET.indexOf(rawText.charAt(i)) === -1) {
                 throw new Error();
             }
         }
