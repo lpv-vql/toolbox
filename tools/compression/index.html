@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>テキスト圧縮・展開</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        .code-editor {
+            height: 250px;
+        }
+        .field-container {
+            margin-bottom: 35px;
+        }
+        .status {
+            color: #ff4d4d;
+            font-size: 0.9rem;
+            margin-top: 5px;
+            min-height: 1.2em;
+        }
+        .info-tag {
+            display: inline-block;
+            background: #eee;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <a href="/toolbox" class="logo">Toolbox</a>
+</header>
+
+<main>
+    <h1>テキスト圧縮・展開</h1>        
+    <div class="field-container">
+        <h2>元テキスト</h2>
+        <div class="info-tag" id="text-count">文字数: 0</div>
+        <textarea class="code-editor" id="text-input" spellcheck="false" placeholder="ここに半角英数字などのテキストを入力してください..." onclick="this.select()"></textarea>
+        <button id="copy-text-btn">コピー</button>
+    </div>
+
+    <div class="field-container">
+        <h2>圧縮済みテキスト</h2>
+        <div class="info-tag" id="compressed-count">文字数: 0</div>
+        <textarea class="code-editor" id="compressed-input" spellcheck="false" placeholder="圧縮された文字がここに表示されます / もしくは展開したい圧縮文字列を貼り付けてください" onclick="this.select()"></textarea>
+        <div id="error-status" class="status"></div>
+        <button id="copy-compressed-btn">コピー</button>
+    </div>
+
+    <div class="toast" id="toast">コピーしました！</div>
+</main>
+
+<script>
+    const textInput = document.getElementById('text-input');
+    const compressedInput = document.getElementById('compressed-input');
+    const errorStatus = document.getElementById('error-status');
+    const textCount = document.getElementById('text-count');
+    const compressedCount = document.getElementById('compressed-count');
+        
+    const copyTextBtn = document.getElementById('copy-text-btn');
+    const copyCompressedBtn = document.getElementById('copy-compressed-btn');
+
+    // --- 圧縮・展開のコアロジック ---
+    // ハックとして扱いやすく表示崩れが起きにくい「CJK統合漢字拡張B」付近、またはUnicodeの隙間(U+4E00〜)を利用
+    // ここでは1文字に2バイト分(16bit)の半角文字情報を詰め込みます（1文字圧縮率 約50%）
+    const BIAS = 0x4E00; 
+
+    function compress(str) {
+        if (!str) return '';
+        // 奇数バイト対策で、末尾にパディングが必要か確認するためにUTF-8ではなく簡易バッファ化
+        // 扱いやすいように一度エスケープ（全角混ざり対策も兼ねる）
+        const bytes = new TextEncoder().encode(str);
+        let result = '';
+        
+        for (let i = 0; i < bytes.length; i += 2) {
+            let b1 = bytes[i];
+            let b2 = (i + 1 < bytes.length) ? bytes[i + 1] : 0; // 奇数の場合は0パディング
+            
+            // 16bitの数値を生成
+            const codePoint = BIAS + (b1 << 8) + b2;
+            result += String.fromCodePoint(codePoint);
+        }
+        return result;
+    }
+
+    function decompress(str) {
+        if (!str) return '';
+        const bytes = [];
+        
+        // 各文字から元の2バイトを抽出
+        for (const char of str) {
+            const codePoint = char.codePointAt(0);
+            const offset = codePoint - BIAS;
+            
+            if (offset < 0 || offset > 0xFFFF) {
+                throw new Error("不正な文字が含まれています");
+            }
+            
+            const b1 = (offset >> 8) & 0xFF;
+            const b2 = offset & 0xFF;
+            
+            bytes.push(b1);
+            if (b2 !== 0) {
+                bytes.push(b2);
+            }
+        }
+        
+        return new TextDecoder().decode(new Uint8Array(bytes));
+    }
+
+    // --- カウンター更新 ---
+    function updateCounts() {
+        // JavaScriptの.lengthはサロゲートペアを2文字と数えるため、
+        // 実際の「見た目の文字数」に近い正確なカウントには[...str].lengthを使用
+        textCount.innerText = `文字数: ${[...textInput.value].length}`;
+        compressedCount.innerText = `文字数: ${[...compressedInput.value].length}`;
+    }
+
+    // --- リアルタイム変換処理 ---
+    
+    // テキスト入力時（圧縮）
+    textInput.addEventListener('input', () => {
+        const rawText = textInput.value;
+        if (!rawText) {
+            compressedInput.value = '';
+            errorStatus.innerText = '';
+            updateCounts();
+            return;
+        }
+        try {
+            compressedInput.value = compress(rawText);
+            errorStatus.innerText = '';
+        } catch (e) {
+            errorStatus.innerText = '圧縮エラーが発生しました。';
+        }
+        updateCounts();
+    });
+
+    // 圧縮文字入力時（展開）
+    compressedInput.addEventListener('input', () => {
+        const compressedText = compressedInput.value;
+        if (!compressedText) {
+            textInput.value = '';
+            errorStatus.innerText = '';
+            updateCounts();
+            return;
+        }
+        try {
+            textInput.value = decompress(compressedText);
+            errorStatus.innerText = '';
+        } catch (e) {
+            errorStatus.innerText = '変換エラー: 正しい圧縮形式ではありません。';
+        }
+        updateCounts();
+    });
+
+    // --- コピーボタンの処理 ---
+    copyTextBtn.addEventListener('click', () => {
+        textInput.select();
+        copyToClipboard(textInput.value);
+    });
+
+    copyCompressedBtn.addEventListener('click', () => {
+        compressedInput.select();
+        copyToClipboard(compressedInput.value);
+    });
+
+    function copyToClipboard(text) {
+        if (!text) return;
+        navigator.clipboard.writeText(text)
+            .then(() => { showToast("コピーしました！"); })
+            .catch(() => { showToast("コピーに失敗しました。手動でコピーしてください。"); });
+    }
+
+    let toastTimeout;
+    function showToast(message) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.classList.add('show');
+
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => {
+            toast.classList.remove('show');
+        }, 1800);
+    }
+</script>
+</body>
+</html>
