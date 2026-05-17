@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASCII文字 1/3圧縮ツール</title>
+    <title>テキスト圧縮・解凍</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
@@ -21,18 +21,17 @@
 </header>
 
 <main>
-    <h1>ASCII文字 1/3圧縮ツール</h1>
+    <h1>テキスト圧縮・解凍</h1>
     
     <div class="field-container">
-        <h2>テキスト (元のASCIIデータ)</h2>
-        <p>指定の英数字・記号のみのテキストを入力してください（文字数が1/3に圧縮されます）</p>
+        <h2>テキスト</h2>
+        <p>指定の英数字・記号のみのテキストを入力してください</p>
         <textarea class="code-editor" id="text-input" spellcheck="false" onclick="this.select()"></textarea>
         <button id="copy-text-btn">コピー</button>
     </div>
 
     <div class="field-container">
         <h2>圧縮された文字列 (Unicode)</h2>
-        <p>めいっぱいUnicode文字を使って短縮されたデータが出力されます（デコードも可能）</p>
         <textarea class="code-editor" id="encoded-input" spellcheck="false" onclick="this.select()"></textarea>
         <div id="error-status" class="status"></div>
         <button id="copy-encoded-btn">コピー</button>
