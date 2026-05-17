@@ -61,13 +61,14 @@
     const copyTextBtn = document.getElementById('copy-text-btn');
     const copyCompressedBtn = document.getElementById('copy-compressed-btn');
 
-    // 圧縮に使用する安全な「目に見える文字」の開始地点
-    // U+3000(ひらがな・カタカナ周辺)からU+FFFFの手前までの広大な空間を利用
-    const BIAS = 0x3000;
-    // 基本多言語面の中で安全に表現できる文字数の上限（約5万文字のバッファ）
-    const MAX_RANGE = 50000;
+    // 21bitのデータスペースを確保するため、拡張漢字領域（U+24000）をベースに使用
+    // これにより「あ」を含む様々な文字・漢字・記号のバリエーションが出現します
+    const BIAS = 0x24000;
+    
+    // 半角アスキー(0~127)の範囲外となる128を、端数埋め（パディング）として使用
+    const PADDING_VAL = 128;
 
-    // 圧縮ロジック（3文字またはそれ以下を1文字のUnicodeに安全にパッキング）
+    // 圧縮ロジック：3文字を129進数として計算し、完全に1つのUnicodeコードポイントに結合
     function megaCompress(str) {
         if (!str) return '';
         
@@ -75,88 +76,46 @@
         const chars = [...str];
         
         for (let i = 0; i < chars.length; i += 3) {
-            // 残りの文字数を確認
-            let remain = chars.length - i;
-            let codePoint = BIAS;
+            let c1 = chars[i].charCodeAt(0) & 0x7F;
+            let c2 = (i + 1 < chars.length) ? (chars[i + 1].charCodeAt(0) & 0x7F) : PADDING_VAL; 
+            let c3 = (i + 2 < chars.length) ? (chars[i + 2].charCodeAt(0) & 0x7F) : PADDING_VAL;
             
-            if (remain >= 3) {
-                // 3文字ある場合：アスキーの組み合わせ
-                let c1 = chars[i].charCodeAt(0) & 0x7F;
-                let c2 = chars[i+1].charCodeAt(0) & 0x7F;
-                let c3 = chars[i+2].charCodeAt(0) & 0x7F;
-                
-                // 3文字のデータを計算（128進数）
-                let val = (c1 * 128 * 128) + (c2 * 128) + c3;
-                
-                // 割り算の余りを使って、MAX_RANGE(50000)を超えないように2文字に分けて出力
-                // 通常は1文字、あふれた分はもう1文字添える（ほとんどは1文字で収まり平均1/3を維持）
-                codePoint += (val % MAX_RANGE);
-                result += String.fromCodePoint(codePoint);
-                
-                let extra = Math.floor(val / MAX_RANGE);
-                if (extra > 0) {
-                    // 識別用に少し離れた特殊文字領域にマッピング
-                    result += String.fromCodePoint(BIAS + MAX_RANGE + extra);
-                }
-            } else if (remain === 2) {
-                // 残り2文字の場合
-                let c1 = chars[i].charCodeAt(0) & 0x7F;
-                let c2 = chars[i+1].charCodeAt(0) & 0x7F;
-                let val = (c1 * 128) + c2;
-                // 2文字であることを示すために特別なオフセットを加算
-                result += String.fromCodePoint(BIAS + MAX_RANGE + 100 + val);
-            } else {
-                // 残り1文字の場合
-                let c1 = chars[i].charCodeAt(0) & 0x7F;
-                result += String.fromCodePoint(BIAS + MAX_RANGE + 17000 + c1);
-            }
+            // 129進数の掛け算。最大値は (127 * 129 * 129) + (128 * 129) + 128 = 2,130,173
+            // BIAS(147,456)を足しても約2.27Mとなり、JavaScriptのString.fromCodePointが許容する絶対上限（0x10FFFF = 1,114,111）を超えてしまうのを防ぐため、
+            // 基数を「96（アスキーの印刷可能文字数相当）」に極限まで落とし、上限を絶対に超えない安全な3文字パッキングを構成
+            let s1 = chars[i].charCodeAt(0) - 32; // 空白(32)を基準に0スタート化
+            let s2 = (i + 1 < chars.length) ? (chars[i + 1].charCodeAt(0) - 32) : 96; 
+            let s3 = (i + 2 < chars.length) ? (chars[i + 2].charCodeAt(0) - 32) : 96;
+            
+            // 97進数で計算: 最大 (95 * 97 * 97) + (96 * 97) + 96 = 903,160。BIASを足しても約105万で、Unicode上限(111万)に100%収まる
+            const codePoint = BIAS + (s1 * 97 * 97) + (s2 * 97) + s3;
+            result += String.fromCodePoint(codePoint);
         }
         return result;
     }
 
-    // 展開ロジック
+    // 展開ロジック：1文字の数値から3つの文字コードを完全に逆算
     function megaDecompress(str) {
         if (!str) return '';
         let result = '';
-        const chars = [...str];
         
-        for (let i = 0; i < chars.length; i++) {
-            const cp = chars[i].codePointAt(0);
-            let offset = cp - BIAS;
+        for (const char of [...str]) {
+            const codePoint = char.codePointAt(0);
+            let offset = codePoint - BIAS;
             
-            if (offset < 0) throw new Error("不正な文字");
-            
-            if (offset < MAX_RANGE) {
-                // 3文字圧縮のメイン文字
-                let val = offset;
-                
-                // 次の文字が「あふれ分データ」かどうかチェック
-                if (i + 1 < chars.length) {
-                    let nextCp = chars[i+1].codePointAt(0) - BIAS;
-                    if (nextCp > MAX_RANGE && nextCp <= MAX_RANGE + 50) {
-                        val += (nextCp - MAX_RANGE) * MAX_RANGE;
-                        i++; // あふれ分を消費
-                    }
-                }
-                
-                // 128進数から3文字を復元
-                const c3 = val % 128;
-                val = Math.floor(val / 128);
-                const c2 = val % 128;
-                const c1 = Math.floor(val / 128);
-                
-                result += String.fromCharCode(c1, c2, c3);
-            } else if (offset >= MAX_RANGE + 100 && offset < MAX_RANGE + 17000) {
-                // 2文字圧縮の復元
-                let val = offset - (MAX_RANGE + 100);
-                const c2 = val % 128;
-                const c1 = Math.floor(val / 128);
-                result += String.fromCharCode(c1, c2);
-            } else if (offset >= MAX_RANGE + 17000) {
-                // 1文字圧縮の復元
-                let c1 = offset - (MAX_RANGE + 17000);
-                result += String.fromCharCode(c1);
+            if (offset < 0) {
+                throw new Error("対応していない文字が含まれています");
             }
+            
+            // 97進数から各文字を逆算
+            const s3 = offset % 97;
+            offset = Math.floor(offset / 97);
+            const s2 = offset % 97;
+            const s1 = Math.floor(offset / 97);
+            
+            if (s1 !== 96) result += String.fromCharCode(s1 + 32);
+            if (s2 !== 96) result += String.fromCharCode(s2 + 32);
+            if (s3 !== 96) result += String.fromCharCode(s3 + 32);
         }
         return result;
     }
@@ -167,7 +126,6 @@
         compressedCount.innerText = `文字数: ${[...compressedInput.value].length}`;
     }
 
-    // 相互のイベント発火衝突を防ぐためのフラグ
     let isUpdating = false;
 
     // --- リアルタイムイベント処理 ---
@@ -177,9 +135,14 @@
 
         const rawText = textInput.value;
 
-        const hasFullWidth = [...rawText].some(char => char.charCodeAt(0) > 0x7F);
-        if (hasFullWidth) {
-            errorStatus.innerText = '注意: 全角文字が含まれています。正しく圧縮できない可能性があります。';
+        // 改行やタブを除いた、通常の半角記号・英数字(32〜126)の範囲外を全角として検知
+        const hasFullWidth = [...rawText].some(char => {
+            const code = char.charCodeAt(0);
+            return code < 32 || code > 126;
+        });
+        
+        if (hasFullWidth && rawText.length > 0) {
+            errorStatus.innerText = '注意: 改行や全角文字が含まれています。スペースや英数字・一般的な記号のみ対応しています。';
         } else {
             errorStatus.innerText = '';
         }
