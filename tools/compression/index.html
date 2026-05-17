@@ -6,23 +6,12 @@
     <title>テキスト圧縮・展開</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@100..900&family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../style.css">
     <style>
-        .code-editor {
-            height: 200px;
-        }
-        .field-container {
-            margin-bottom: 35px;
-        }
-        .info-tag {
-            display: inline-block;
-            background: #eee;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.85rem;
-            margin-bottom: 5px;
-        }
+        .code-editor { height: 150px; }
+        .field-container { margin-bottom: 35px; }
     </style>
 </head>
 <body>
@@ -32,179 +21,167 @@
 </header>
 
 <main>
-    <h1>テキスト圧縮・展開</h1>            
+    <h1>テキスト圧縮・展開</h1>
+    
     <div class="field-container">
-        <h2>半角テキスト</h2>
-        <div class="info-tag" id="text-count">文字数: 0</div>
-        <textarea class="code-editor" id="text-input" spellcheck="false" placeholder="半角英数字・記号を入力してください" onclick="this.select()"></textarea>
+        <h2>テキスト</h2>
+        <textarea class="code-editor" id="text-input" spellcheck="false" onclick="this.select()"></textarea>
         <button id="copy-text-btn">コピー</button>
     </div>
 
     <div class="field-container">
         <h2>圧縮済み文字列</h2>
-        <div class="info-tag" id="compressed-count">文字数: 0</div>
-        <textarea class="code-editor" id="compressed-input" spellcheck="false" onclick="this.select()"></textarea>
+        <textarea class="code-editor" id="encoded-input" spellcheck="false" onclick="this.select()"></textarea>
         <div id="error-status" class="status"></div>
-        <button id="copy-compressed-btn">コピー</button>
+        <button id="copy-encoded-btn">コピー</button>
     </div>
 
     <div class="toast" id="toast">コピーしました！</div>
 </main>
 
 <script>
-    const textInput = document.getElementById('text-input');
-    const compressedInput = document.getElementById('compressed-input');
-    const errorStatus = document.getElementById('error-status');
-    const textCount = document.getElementById('text-count');
-    const compressedCount = document.getElementById('compressed-count');
-            
-    const copyTextBtn = document.getElementById('copy-text-btn');
-    const copyCompressedBtn = document.getElementById('copy-compressed-btn');
+const textInput = document.getElementById('text-input');
+const encodedInput = document.getElementById('encoded-input');
+const errorStatus = document.getElementById('error-status');
+const copyTextBtn = document.getElementById('copy-text-btn');
+const copyEncodedBtn = document.getElementById('copy-encoded-btn');
 
-    // 21bitのデータスペースを確保するため、拡張漢字領域（U+24000）をベースに使用
-    // これにより「あ」を含む様々な文字・漢字・記号のバリエーションが出現します
-    const BIAS = 0x24000;
+// --- Base91風の圧縮・復元ロジック ---
+// 指定された 95 文字のASCII文字セット
+const CH_SET = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+
+// 1. 圧縮 (Unicode文字列 -> 指定ASCII文字列)
+function compressText(str) {
+    if (!str) return "";
+    // UTF-8のバイト配列に変換
+    const bytes = new TextEncoder().encode(str);
+    let ret = "";
+    let n = 0;
+    let b = 0;
     
-    // 半角アスキー(0~127)の範囲外となる128を、端数埋め（パディング）として使用
-    const PADDING_VAL = 128;
-
-    // 圧縮ロジック：3文字を129進数として計算し、完全に1つのUnicodeコードポイントに結合
-    function megaCompress(str) {
-        if (!str) return '';
-        
-        let result = '';
-        const chars = [...str];
-        
-        for (let i = 0; i < chars.length; i += 3) {
-            let c1 = chars[i].charCodeAt(0) & 0x7F;
-            let c2 = (i + 1 < chars.length) ? (chars[i + 1].charCodeAt(0) & 0x7F) : PADDING_VAL; 
-            let c3 = (i + 2 < chars.length) ? (chars[i + 2].charCodeAt(0) & 0x7F) : PADDING_VAL;
-            
-            // 129進数の掛け算。最大値は (127 * 129 * 129) + (128 * 129) + 128 = 2,130,173
-            // BIAS(147,456)を足しても約2.27Mとなり、JavaScriptのString.fromCodePointが許容する絶対上限（0x10FFFF = 1,114,111）を超えてしまうのを防ぐため、
-            // 基数を「96（アスキーの印刷可能文字数相当）」に極限まで落とし、上限を絶対に超えない安全な3文字パッキングを構成
-            let s1 = chars[i].charCodeAt(0) - 32; // 空白(32)を基準に0スタート化
-            let s2 = (i + 1 < chars.length) ? (chars[i + 1].charCodeAt(0) - 32) : 96; 
-            let s3 = (i + 2 < chars.length) ? (chars[i + 2].charCodeAt(0) - 32) : 96;
-            
-            // 97進数で計算: 最大 (95 * 97 * 97) + (96 * 97) + 96 = 903,160。BIASを足しても約105万で、Unicode上限(111万)に100%収まる
-            const codePoint = BIAS + (s1 * 97 * 97) + (s2 * 97) + s3;
-            result += String.fromCodePoint(codePoint);
-        }
-        return result;
-    }
-
-    // 展開ロジック：1文字の数値から3つの文字コードを完全に逆算
-    function megaDecompress(str) {
-        if (!str) return '';
-        let result = '';
-        
-        for (const char of [...str]) {
-            const codePoint = char.codePointAt(0);
-            let offset = codePoint - BIAS;
-            
-            if (offset < 0) {
-                throw new Error("対応していない文字が含まれています");
+    for (let i = 0; i < bytes.length; i++) {
+        n |= bytes[i] << b;
+        b += 8;
+        if (b > 13) {
+            let v = n & 8191;
+            if (v > 88) {
+                n >>= 13;
+                b -= 13;
+            } else {
+                v = n & 16383;
+                n >>= 14;
+                b -= 14;
             }
-            
-            // 97進数から各文字を逆算
-            const s3 = offset % 97;
-            offset = Math.floor(offset / 97);
-            const s2 = offset % 97;
-            const s1 = Math.floor(offset / 97);
-            
-            if (s1 !== 96) result += String.fromCharCode(s1 + 32);
-            if (s2 !== 96) result += String.fromCharCode(s2 + 32);
-            if (s3 !== 96) result += String.fromCharCode(s3 + 32);
+            ret += CH_SET[v % 91] + CH_SET[Math.floor(v / 91)];
         }
-        return result;
     }
-
-    // --- カウンター更新 ---
-    function updateCounts() {
-        textCount.innerText = `文字数: ${[...textInput.value].length}`;
-        compressedCount.innerText = `文字数: ${[...compressedInput.value].length}`;
+    if (b > 0) {
+        ret += CH_SET[n % 91];
+        if (b > 7 || n >= 91) {
+            ret += CH_SET[Math.floor(n / 91)];
+        }
     }
+    return ret;
+}
 
-    let isUpdating = false;
+// 2. 伸長 (指定ASCII文字列 -> Unicode文字列)
+function decompressText(str) {
+    if (!str) return "";
+    let bytes = [];
+    let n = 0;
+    let b = 0;
+    let v = -1;
 
-    // --- リアルタイムイベント処理 ---
-    textInput.addEventListener('input', () => {
-        if (isUpdating) return;
-        isUpdating = true;
-
-        const rawText = textInput.value;
-
-        // 改行やタブを除いた、通常の半角記号・英数字(32〜126)の範囲外を全角として検知
-        const hasFullWidth = [...rawText].some(char => {
-            const code = char.charCodeAt(0);
-            return code < 32 || code > 126;
-        });
+    for (let i = 0; i < str.length; i++) {
+        const c = CH_SET.indexOf(str[i]);
+        if (c === -1) throw new Error("無効な文字が含まれています");
         
-        if (hasFullWidth && rawText.length > 0) {
-            errorStatus.innerText = '注意: 改行や全角文字が含まれています。スペースや英数字・一般的な記号のみ対応しています。';
+        if (v < 0) {
+            v = c;
         } else {
-            errorStatus.innerText = '';
+            v += c * 91;
+            n |= v << b;
+            b += (v & 8191) > 88 ? 13 : 14;
+            do {
+                bytes.push(n & 255);
+                n >>= 8;
+                b -= 8;
+            } while (b > 7);
+            v = -1;
         }
-
-        if (!rawText) {
-            compressedInput.value = '';
-        } else {
-            compressedInput.value = megaCompress(rawText);
-        }
-        
-        updateCounts();
-        isUpdating = false;
-    });
-
-    compressedInput.addEventListener('input', () => {
-        if (isUpdating) return;
-        isUpdating = true;
-
-        const compressedText = compressedInput.value;
-        if (!compressedText) {
-            textInput.value = '';
-            errorStatus.innerText = '';
-        } else {
-            try {
-                textInput.value = megaDecompress(compressedText);
-                errorStatus.innerText = '';
-            } catch (e) {
-                errorStatus.innerText = '変換エラー: 正しい圧縮データではありません。';
-            }
-        }
-        
-        updateCounts();
-        isUpdating = false;
-    });
-
-    // --- コピー＆トースト処理 ---
-    copyTextBtn.addEventListener('click', () => {
-        textInput.select();
-        copyToClipboard(textInput.value);
-    });
-
-    copyCompressedBtn.addEventListener('click', () => {
-        compressedInput.select();
-        copyToClipboard(compressedInput.value);
-    });
-
-    function copyToClipboard(text) {
-        if (!text) return;
-        navigator.clipboard.writeText(text)
-            .then(() => { showToast("コピーしました！"); })
-            .catch(() => { showToast("コピーに失敗しました。"); });
     }
-
-    let toastTimeout;
-    function showToast(message) {
-        const toast = document.getElementById('toast');
-        if (!toast) return;
-        toast.textContent = message;
-        toast.classList.add('show');
-        clearTimeout(toastTimeout);
-        toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 1800);
+    if (v >= 0) {
+        bytes.push((n | (v << b)) & 255);
     }
+    
+    // バイト配列を文字列に戻す
+    return new TextDecoder().decode(new Uint8Array(bytes));
+}
+
+// --- リアルタイム変換処理 ---
+
+// 生テキスト入力時（圧縮を実行）
+textInput.addEventListener('input', () => {
+    const rawText = textInput.value;
+    if (!rawText) {
+        encodedInput.value = '';
+        errorStatus.innerText = '';
+        return;
+    }
+    try {
+        encodedInput.value = compressText(rawText);
+        errorStatus.innerText = '';
+    } catch (e) {
+        errorStatus.innerText = '圧縮エラーが発生しました';
+    }
+});
+
+// 圧縮テキスト入力時（復元を実行）
+encodedInput.addEventListener('input', () => {
+    const encodedText = encodedInput.value;
+    if (!encodedText) {
+        textInput.value = '';
+        errorStatus.innerText = '';
+        return;
+    }
+    try {
+        textInput.value = decompressText(encodedText);
+        errorStatus.innerText = '';
+    } catch (e) {
+        errorStatus.innerText = '変換エラー: 正しい圧縮形式ではないか、指定外の文字が含まれています。';
+    }
+});
+
+// --- コピーボタンの処理 ---
+copyTextBtn.addEventListener('click', () => {
+    textInput.select();
+    copyToClipboard(textInput.value);
+});
+
+copyEncodedBtn.addEventListener('click', () => {
+    encodedInput.select();
+    copyToClipboard(encodedInput.value);
+});
+
+// クリップボードコピー＆トースト表示共通関数
+function copyToClipboard(text) {
+    if (!text) return; 
+    navigator.clipboard.writeText(text)
+        .then(() => { showToast("コピーしました！"); })
+        .catch(() => { showToast("コピーに失敗しました。手動でコピーしてください。"); });
+}
+
+let toastTimeout;
+function showToast(message) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.classList.add('show');
+
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => {
+        toast.classList.remove('show');
+    }, 1800);
+}
 </script>
 </body>
 </html>
