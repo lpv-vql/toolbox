@@ -43,7 +43,7 @@
     <div class="field-container">
         <h2>圧縮済み文字列</h2>
         <div class="info-tag" id="compressed-count">文字数: 0</div>
-        <textarea class="code-editor" id="compressed-input" spellcheck="false" onclick="this.select()"></textarea>
+        <textarea class="code-editor" id="compressed-input" spellcheck="false" placeholder="ここに圧縮された文字が出力されます" onclick="this.select()"></textarea>
         <div id="error-status" class="status"></div>
         <button id="copy-compressed-btn">コピー</button>
     </div>
@@ -69,16 +69,13 @@
         if (!str) return '';
         
         let result = '';
-        // 処理しやすいように配列化
         const chars = [...str];
         
         for (let i = 0; i < chars.length; i += 3) {
-            // 各文字の文字コードを取得（アスキー制限のため一応0x7Fでマスク）
             let c1 = chars[i].charCodeAt(0) & 0x7F;
-            let c2 = (i + 1 < chars.length) ? (chars[i + 1].charCodeAt(0) & 0x7F) : 0x7F; // 存在しない場合はダミーの値を設定
+            let c2 = (i + 1 < chars.length) ? (chars[i + 1].charCodeAt(0) & 0x7F) : 0x7F; 
             let c3 = (i + 2 < chars.length) ? (chars[i + 2].charCodeAt(0) & 0x7F) : 0x7F;
             
-            // 7bit × 3 = 21bitの数値を生成
             const codePoint = BIAS + (c1 << 14) + (c2 << 7) + c3;
             result += String.fromCodePoint(codePoint);
         }
@@ -94,63 +91,73 @@
             const codePoint = char.codePointAt(0);
             const offset = codePoint - BIAS;
             
-            // 範囲外の文字がある場合の簡易チェック
             if (offset < 0 || offset > 0x1FFFFF) {
                 throw new Error("対応していない文字が含まれています");
             }
             
-            // 21bitから7bitずつ切り出す
             const c1 = (offset >> 14) & 0x7F;
             const c2 = (offset >> 7) & 0x7F;
             const c3 = offset & 0x7F;
             
-            result += String.fromCharCode(c1);
+            // ダミー値(0x7F)でなければ文字として復元
+            if (c1 !== 0x7F) result += String.fromCharCode(c1);
             if (c2 !== 0x7F) result += String.fromCharCode(c2);
             if (c3 !== 0x7F) result += String.fromCharCode(c3);
         }
         return result;
     }
 
-    // --- カウンター更新 (サロゲートペアを正しく1文字として数える) ---
+    // --- カウンター更新 ---
     function updateCounts() {
         textCount.innerText = `文字数: ${[...textInput.value].length}`;
         compressedCount.innerText = `文字数: ${[...compressedInput.value].length}`;
     }
 
+    // 相互のイベント発火衝突を防ぐためのフラグ
+    let isUpdating = false;
+
     // --- リアルタイムイベント処理 ---
     textInput.addEventListener('input', () => {
+        if (isUpdating) return;
+        isUpdating = true;
+
         const rawText = textInput.value;
-        // 半角以外が含まれているかチェック（簡易警告）
+        
         if (/[^\x00-\x7F]/.test(rawText)) {
-            errorStatus.innerText = '注意: 半角英数字・記号以外の文字は正しく圧縮できません。';
+            errorStatus.innerText = '注意: 全角文字が含まれています。正しく圧縮・展開ができない可能性があります。';
         } else {
             errorStatus.innerText = '';
         }
 
         if (!rawText) {
             compressedInput.value = '';
-            updateCounts();
-            return;
+        } else {
+            compressedInput.value = megaCompress(rawText);
         }
-        compressedInput.value = megaCompress(rawText);
+        
         updateCounts();
+        isUpdating = false;
     });
 
     compressedInput.addEventListener('input', () => {
+        if (isUpdating) return;
+        isUpdating = true;
+
         const compressedText = compressedInput.value;
         if (!compressedText) {
             textInput.value = '';
             errorStatus.innerText = '';
-            updateCounts();
-            return;
+        } else {
+            try {
+                textInput.value = megaDecompress(compressedText);
+                errorStatus.innerText = '';
+            } catch (e) {
+                errorStatus.innerText = '変換エラー: 正しい圧縮データではありません。';
+            }
         }
-        try {
-            textInput.value = megaDecompress(compressedText);
-            errorStatus.innerText = '';
-        } catch (e) {
-            errorStatus.innerText = '変換エラー: 正しい圧縮データではありません。';
-        }
+        
         updateCounts();
+        isUpdating = false;
     });
 
     // --- コピー＆トースト処理 ---
