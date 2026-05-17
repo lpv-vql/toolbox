@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カラーシート・カメラ</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css">
+    <style>
+        /* カメラ映像とフィルターを重ねるためのスタイル */
+        .camera-container {
+            position: relative;
+            width: 100%;
+            max-width: 640px;
+            margin: 20px auto;
+            overflow: hidden;
+            border-radius: 8px;
+            background-color: #000;
+            aspect-ratio: 4 / 3;
+        }
+
+        .camera-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .color-filter {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* フィルターの下の要素を操作できるように（必要に応じて） */
+            mix-blend-mode: multiply; /* 暗記シートのように文字を隠すためのブレンドモード */
+        }
+
+        /* コントロールパネルのスタイル */
+        .controls {
+            max-width: 640px;
+            margin: 20px auto;
+            padding: 15px;
+            background: #f5f5f7;
+            border-radius: 8px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .color-btn {
+            padding: 8px 16px;
+            border: 2px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            background: #fff;
+            font-weight: bold;
+        }
+
+        .color-btn.active {
+            border-color: #0071e3;
+            background: #0071e3;
+            color: #fff;
+        }
+
+        .range-slider {
+            width: 100%;
+        }
+
+        .error-message {
+            color: #ff3b30;
+            text-align: center;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+<header>
+  <a href="/toolbox" class="logo">Toolbox</a>
+</header>
+<main id="app">
+    <h1>暗記用カラーシート・カメラ</h1>
+    
+    <div class="camera-container">
+        <video ref="videoElement" class="camera-video" autoplay playsinline muted></video>
+        <div class="color-filter" :style="filterStyle"></div>
+    </div>
+
+    <div v-if="errorMessage" class="error-message">
+        {{ errorMessage }}
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>シートの色選択</label>
+            <div class="btn-group">
+                <button class="color-btn" :class="{ active: selectedMode === 'red' }" @click="selectColor('red')">赤シート</button>
+                <button class="color-btn" :class="{ active: selectedMode === 'green' }" @click="selectColor('green')">緑シート</button>
+                <button class="color-btn" :class="{ active: selectedMode === 'custom' }" @click="selectColor('custom')">カスタム</button>
+            </div>
+            
+            <div v-if="selectedMode === 'custom'">
+                <input type="color" v-model="customColor">
+                <span>選択中の色: {{ customColor }}</span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>シートの濃さ（不透明度）: {{ Math.round(opacity * 100) }}%</label>
+            <input type="range" class="range-slider" min="0" max="1" step="0.05" v-model.number="opacity">
+        </div>
+    </div>
+</main>
+
+<script>
+    const { createApp, ref, computed, onMounted, onBeforeUnmount } = Vue;
+    createApp({
+        setup() {
+            const videoElement = ref(null);
+            const selectedMode = ref("red"); // red, green, custom
+            const customColor = ref("#ff0000"); // 初期値：赤
+            const opacity = ref(0.6); // 初期値：60%
+            const errorMessage = ref("");
+            let stream = null;
+
+            // 選択されたモードとカラーピッカーに応じたRGB値を返す
+            const currentHexColor = computed(() => {
+                if (selectedMode.value === "red") return "#ff0000";
+                if (selectedMode.value === "green") return "#00ff00";
+                return customColor.value;
+            });
+
+            // フィルターに適用するインラインスタイル
+            const filterStyle = computed(() => {
+                return {
+                    backgroundColor: currentHexColor.value,
+                    opacity: opacity.value
+                };
+            });
+
+            // カラーモードの切り替え
+            const selectColor = (mode) => {
+                selectedMode.value = mode;
+            };
+
+            // カメラの起動処理
+            const initCamera = async () => {
+                try {
+                    // スマートフォンなどの場合は背面カメラ（environment）を優先
+                    const constraints = {
+                        video: { facingMode: "environment" },
+                        audio: false
+                    };
+                    
+                    stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    if (videoElement.value) {
+                        videoElement.value.srcObject = stream;
+                    }
+                } catch (err) {
+                    console.error("カメラの起動に失敗しました: ", err);
+                    errorMessage.value = "カメラへのアクセスが拒否されたか、デバイスにカメラがありません。";
+                }
+            };
+
+            // コンポーネントがマウントされたらカメラを起動
+            onMounted(() => {
+                initCamera();
+            });
+
+            // 画面を離れる時にカメラを停止してリソースを解放
+            onBeforeUnmount(() => {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+            });
+
+            return {
+                videoElement,
+                selectedMode,
+                customColor,
+                opacity,
+                errorMessage,
+                filterStyle,
+                selectColor
+            };
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>
