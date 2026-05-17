@@ -61,83 +61,88 @@
     const copyTextBtn = document.getElementById('copy-text-btn');
     const copyCompressedBtn = document.getElementById('copy-compressed-btn');
 
-    // CJK統合漢字の安全な開始地点 (U+4E00) をベースに使用
-    // 14ビット(16384通り)移動しても通常の漢字領域に収まるため絶対にブラウザで壊れません
-    const BIAS = 0x4E00; 
+    // 漢字拡張B領域の開始地点 (U+20000) をベースに使用
+    const BIAS = 0x20000; 
 
-    // 圧縮ロジック (半角2文字の7bitアスキーを1つの14bitコードポイントに結合)
-    function safeCompress(str) {
+    // 圧縮ロジック (3文字の7bitアスキーを1つの21bitコードポイントに結合)
+    function megaCompress(str) {
         if (!str) return '';
-        let result = '';
         
-        for (let i = 0; i < str.length; i += 2) {
-            let c1 = str.charCodeAt(i) & 0x7F;
-            // 奇数文字目で終わる場合は、2文字目をダミー(0x7F)にする
-            let c2 = (i + 1 < str.length) ? (str.charCodeAt(i + 1) & 0x7F) : 0x7F;
+        let result = '';
+        const chars = [...str];
+        
+        for (let i = 0; i < chars.length; i += 3) {
+            let c1 = chars[i].charCodeAt(0) & 0x7F;
+            let c2 = (i + 1 < chars.length) ? (chars[i + 1].charCodeAt(0) & 0x7F) : 0x7F; 
+            let c3 = (i + 2 < chars.length) ? (chars[i + 2].charCodeAt(0) & 0x7F) : 0x7F;
             
-            // 7bit × 2 = 14bit の数値を生成して漢字に変形
-            const codePoint = BIAS + (c1 << 7) + c2;
-            result += String.fromCharCode(codePoint);
+            const codePoint = BIAS + (c1 << 14) + (c2 << 7) + c3;
+            result += String.fromCodePoint(codePoint);
         }
         return result;
     }
 
     // 展開ロジック
-    function safeDecompress(str) {
+    function megaDecompress(str) {
         if (!str) return '';
         let result = '';
         
-        for (let i = 0; i < str.length; i++) {
-            const codePoint = str.charCodeAt(i);
+        for (const char of [...str]) {
+            const codePoint = char.codePointAt(0);
             const offset = codePoint - BIAS;
             
-            // 漢字領域外の文字が含まれている場合のチェック
-            if (offset < 0 || offset > 0x3FFF) {
+            if (offset < 0 || offset > 0x1FFFFF) {
                 throw new Error("対応していない文字が含まれています");
             }
             
-            // 14bitから7bitずつ2文字を切り出す
-            const c1 = (offset >> 7) & 0x7F;
-            const c2 = offset & 0x7F;
+            const c1 = (offset >> 14) & 0x7F;
+            const c2 = (offset >> 7) & 0x7F;
+            const c3 = offset & 0x7F;
             
             if (c1 !== 0x7F) result += String.fromCharCode(c1);
             if (c2 !== 0x7F) result += String.fromCharCode(c2);
+            if (c3 !== 0x7F) result += String.fromCharCode(c3);
         }
         return result;
     }
 
     // --- カウンター更新 ---
     function updateCounts() {
-        textCount.innerText = `文字数: ${textInput.value.length}`;
-        compressedCount.innerText = `文字数: ${compressedInput.value.length}`;
+        textCount.innerText = `文字数: ${[...textInput.value].length}`;
+        compressedCount.innerText = `文字数: ${[...compressedInput.value].length}`;
     }
 
-    // 入力イベントが無限ループで衝突するのを完全に防ぐフラグ
-    let lock = false;
+    // 相互のイベント発火衝突を防ぐためのフラグ
+    let isUpdating = false;
 
     // --- リアルタイムイベント処理 ---
     textInput.addEventListener('input', () => {
-        if (lock) return;
-        lock = true;
+        if (isUpdating) return;
+        isUpdating = true;
 
         const rawText = textInput.value;
-        
-        // 簡易的な全角チェック
-        if (/[^\x00-\x7F]/.test(rawText)) {
-            errorStatus.innerText = '注意: 全角文字が含まれています。正しく圧縮できません。';
+
+        // 改行やタブなどを許容しつつ、純粋な全角文字（キーコード127超）があるかチェック
+        const hasFullWidth = [...rawText].some(char => char.charCodeAt(0) > 0x7F);
+        if (hasFullWidth) {
+            errorStatus.innerText = '注意: 全角文字が含まれています。正しく圧縮できない可能性があります。';
         } else {
             errorStatus.innerText = '';
         }
 
-        compressedInput.value = safeCompress(rawText);
+        if (!rawText) {
+            compressedInput.value = '';
+        } else {
+            compressedInput.value = megaCompress(rawText);
+        }
         
         updateCounts();
-        lock = false;
+        isUpdating = false;
     });
 
     compressedInput.addEventListener('input', () => {
-        if (lock) return;
-        lock = true;
+        if (isUpdating) return;
+        isUpdating = true;
 
         const compressedText = compressedInput.value;
         if (!compressedText) {
@@ -145,16 +150,15 @@
             errorStatus.innerText = '';
         } else {
             try {
-                textInput.value = safeDecompress(compressedText);
+                textInput.value = megaDecompress(compressedText);
                 errorStatus.innerText = '';
             } catch (e) {
                 errorStatus.innerText = '変換エラー: 正しい圧縮データではありません。';
-                textInput.value = '';
             }
         }
         
         updateCounts();
-        lock = false;
+        isUpdating = false;
     });
 
     // --- コピー＆トースト処理 ---
@@ -178,6 +182,7 @@
     let toastTimeout;
     function showToast(message) {
         const toast = document.getElementById('toast');
+        if (!toast) return;
         toast.textContent = message;
         toast.classList.add('show');
         clearTimeout(toastTimeout);
