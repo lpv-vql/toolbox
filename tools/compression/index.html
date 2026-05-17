@@ -51,21 +51,23 @@ const copyEncodedBtn = document.getElementById('copy-encoded-btn');
 const CH_SET = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
 const BASE = 95;
 
-// 使用するUnicodeの開始位置（CJK統合漢字エリア：1文字で3文字分の情報を保持可能）
+// 使用するUnicodeの開始位置（CJK統合漢字エリア）
 const OFFSET = 0x4E00; 
+
+// 端数（0, 1, 2文字の余り）を表現するための、絶対に衝突しない専用のUnicode文字（ハングル互換名辞エリアなどから安全な3文字をチョイス）
+const PAD_MARKERS = [0x3131, 0x3132, 0x3133]; // [余りなし, 1文字余り, 2文字余り]
 
 // 1. 圧縮 (ASCII 3文字 -> Unicode 1文字)
 function compressASCII(str) {
     if (!str) return "";
     
     let result = "";
-    // 元の文字列の長さを3で割った余り（0, 1, 2）
     const mod = str.length % 3;
 
     for (let i = 0; i < str.length; i += 3) {
         let chunk = str.substring(i, i + 3);
         
-        // パディング（3文字に満たない場合はスペースで埋める）
+        // パディング（3文字に満たない場合はスペースで埋めるが、元の状態はmodで記録しているため文字化けしません）
         while (chunk.length < 3) {
             chunk += " ";
         }
@@ -78,21 +80,13 @@ function compressASCII(str) {
             throw new Error("指定外の文字が含まれています");
         }
 
-        // 95進数の計算 (最大: 95^3 - 1 = 857,374)
-        let num = v0 + v1 * BASE + v2 * BASE * BASE;
-        
-        // 最初の1文字目にのみ、余りの情報（0, 1, 2）を混ぜ込む
-        // 857,374 * 3 + 2 = 2,572,124 (Unicodeの最大値 1,114,111 を超えないよう、ここでは安全に足し算で保持)
-        // 1文字の最大値が 857,375 通りなので、modを区別するために num を 3倍するのではなく、
-        // 3つの状態ごとに基本となる値（OFFSET）をずらすアプローチに変更します。
-        let finalOffset = OFFSET;
-        if (i === 0) {
-            // 最初のブロックだけ、mod(0,1,2) に応じて100,000ずつズラして配置
-            finalOffset += (mod * 100000);
-        }
-
-        result += String.fromCodePoint(finalOffset + num);
+        // 95進数の純粋な計算 (最大: 95^3 - 1 = 857,374)
+        const num = v0 + v1 * BASE + v2 * BASE * BASE;
+        result += String.fromCodePoint(OFFSET + num);
     }
+
+    // 圧縮文字列の「最後」に、端数の状態を表すマーカーを1文字だけ付与する
+    result += String.fromCodePoint(PAD_MARKERS[mod]);
     return result;
 }
 
@@ -100,32 +94,24 @@ function compressASCII(str) {
 function decompressASCII(str) {
     if (!str) return "";
     
-    let result = "";
-    let mod = 0;
+    // サロゲートペアを考慮して安全に配列化
+    const chars = Array.from(str);
+    if (chars.length < 1) return "";
 
-    // 最初の文字のCodePointからmod（余り）を逆算する
-    if (str.length > 0) {
-        const firstCode = str.codePointAt(0);
-        if (firstCode >= OFFSET + 200000) {
-            mod = 2;
-        } else if (firstCode >= OFFSET + 100000) {
-            mod = 1;
-        } else {
-            mod = 0;
-        }
+    // 最後の1文字（マーカー）を取り出して、元のデータの端数（mod）を判定する
+    const markerChar = chars.pop();
+    const markerCode = markerChar.codePointAt(0);
+    const mod = PAD_MARKERS.indexOf(markerCode);
+
+    if (mod === -1) {
+        throw new Error("不正な圧縮マーカーです");
     }
 
-    // String.prototype.length ではなく、正しくUnicodeの文字数でループを回す
-    const chars = Array.from(str);
+    let result = "";
 
     for (let i = 0; i < chars.length; i++) {
         const codePoint = chars[i].codePointAt(0);
         let num = codePoint - OFFSET;
-        
-        // 最初の文字はmodのズレを直す
-        if (i === 0) {
-            num -= (mod * 100000);
-        }
         
         if (num < 0) throw new Error("無効な文字データです");
 
@@ -141,7 +127,7 @@ function decompressASCII(str) {
 
         let chunk = CH_SET.charAt(v0) + CH_SET.charAt(v1) + CH_SET.charAt(v2);
         
-        // 最後のブロックかつ、元のデータに端数（余り）があった場合の処理
+        // 最後の3文字ブロック、かつ、元のデータに端数（1文字または2文字の余り）があった場合のトリミング処理
         if (i === chars.length - 1 && mod > 0) {
             chunk = chunk.substring(0, mod);
         }
@@ -161,7 +147,6 @@ textInput.addEventListener('input', () => {
         return;
     }
     try {
-        // 確実な方法（charAt）で指定外の文字が含まれていないかチェック
         for (let i = 0; i < rawText.length; i++) {
             if (CH_SET.indexOf(rawText.charAt(i)) === -1) {
                 throw new Error();
