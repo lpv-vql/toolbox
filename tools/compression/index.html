@@ -61,28 +61,25 @@
     const copyTextBtn = document.getElementById('copy-text-btn');
     const copyCompressedBtn = document.getElementById('copy-compressed-btn');
 
-    // 漢字拡張B領域の開始地点 (U+20000) をベースに使用
-    const BIAS = 0x20000; 
+    // CJK統合漢字領域の開始地点 (U+4E00) をベースに使用（絶対にシステム上限を超えない安全な領域）
+    const BIAS = 0x4E00; 
     
-    // 7bit(0~127)の範囲外となる値を明確なパディング値（128）として定義
+    // パディング用の値（アスキーコード0~127の範囲外）
     const PADDING_VAL = 128; 
 
-    // 圧縮ロジック (3文字の半角アスキーを1つの数値にまとめてUnicode化)
+    // 圧縮ロジック (2文字の半角アスキーを1つの漢字コードにまとめて圧縮)
     function megaCompress(str) {
         if (!str) return '';
         
         let result = '';
         const chars = [...str];
         
-        for (let i = 0; i < chars.length; i += 3) {
+        for (let i = 0; i < chars.length; i += 2) {
             let c1 = chars[i].charCodeAt(0) & 0x7F;
             let c2 = (i + 1 < chars.length) ? (chars[i + 1].charCodeAt(0) & 0x7F) : PADDING_VAL; 
-            let c3 = (i + 2 < chars.length) ? (chars[i + 2].charCodeAt(0) & 0x7F) : PADDING_VAL;
             
-            // 演算子の優先順位バグを完全に排除するため、明確な掛け算で21bit（129進数）空間にマッピング
-            // 最大値は 127*16641 + 128*129 + 128 = 2,129,792。BIAS(131,072)を足しても約2.26Mで、Unicode上限の1,114,111を超えてしまうため、
-            // 安全な128進数(最大7bit+パディング用1マスの計129通り)として正しく範囲内に収まる数式に修正。
-            const codePoint = BIAS + (c1 * 129 * 129) + (c2 * 129) + c3;
+            // 129進数の掛け算で2文字を1つに結合（最大でも 127*129 + 128 = 16511 のため、BIASを足しても絶対安全）
+            const codePoint = BIAS + (c1 * 129) + c2;
             result += String.fromCodePoint(codePoint);
         }
         return result;
@@ -101,15 +98,12 @@
                 throw new Error("対応していない文字が含まれています");
             }
             
-            // 129進数から各文字を逆算して切り出す
-            const c3 = offset % 129;
-            offset = Math.floor(offset / 129);
+            // 129進数から2つの文字コードを逆算
             const c2 = offset % 129;
             const c1 = Math.floor(offset / 129);
             
             if (c1 !== PADDING_VAL) result += String.fromCharCode(c1);
             if (c2 !== PADDING_VAL) result += String.fromCharCode(c2);
-            if (c3 !== PADDING_VAL) result += String.fromCharCode(c3);
         }
         return result;
     }
