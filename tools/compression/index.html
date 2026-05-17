@@ -63,8 +63,9 @@
 
     // 漢字拡張B領域の開始地点 (U+20000) をベースに使用
     const BIAS = 0x20000; 
-    // 7bit(0~127)の範囲外となる値をダミーパディングとして使用
-    const PADDING_VAL = 0x80;
+    
+    // 7bit(0~127)の範囲外で、かつシフトしても最大値(0x10FFFF)を超えないダミー値を設定
+    const PADDING_VAL = 0x7F; 
 
     // 圧縮ロジック (3文字の7bitアスキーを1つの21bitコードポイントに結合)
     function megaCompress(str) {
@@ -74,11 +75,13 @@
         const chars = [...str];
         
         for (let i = 0; i < chars.length; i += 3) {
+            // 安全に7bitでマスク
             let c1 = chars[i].charCodeAt(0) & 0x7F;
             let c2 = (i + 1 < chars.length) ? (chars[i + 1].charCodeAt(0) & 0x7F) : PADDING_VAL; 
             let c3 = (i + 2 < chars.length) ? (chars[i + 2].charCodeAt(0) & 0x7F) : PADDING_VAL;
             
-            const codePoint = BIAS + (c1 << 14) + (c2 << 7) + c3;
+            // 21bitシフト演算の結合順を括弧で明示し、確実に最大値を超えないように修正
+            const codePoint = BIAS + ((c1 << 14) | (c2 << 7) | c3);
             result += String.fromCodePoint(codePoint);
         }
         return result;
@@ -89,6 +92,7 @@
         if (!str) return '';
         let result = '';
         
+        // サロゲートペアを考慮して正しく1文字ずつループ
         for (const char of [...str]) {
             const codePoint = char.codePointAt(0);
             const offset = codePoint - BIAS;
@@ -101,10 +105,20 @@
             const c2 = (offset >> 7) & 0x7F;
             const c3 = offset & 0x7F;
             
-            // パディング値でなければ文字として復元
-            if (c1 !== PADDING_VAL) result += String.fromCharCode(c1);
-            if (c2 !== PADDING_VAL) result += String.fromCharCode(c2);
-            if (c3 !== PADDING_VAL) result += String.fromCharCode(c3);
+            // 元データの末尾がPADDING_VAL(0x7F)だった場合、それが「元の文字」か「隙間埋め」かを判定
+            // 3文字セットの途中でPADDING_VALが出現した場合は元の文字、末尾の余りスペースなら無視
+            result += String.fromCharCode(c1);
+            if (c2 !== PADDING_VAL || offset & (0x7F << 7)) {
+                result += String.fromCharCode(c2);
+            }
+            if (c3 !== PADDING_VAL || offset & 0x7F) {
+                // c3自身がパディングかつ、c2の位置までパディングだった場合は、文字数が3の倍数でなかった証拠なのでスキップ
+                if (c3 === PADDING_VAL && c2 === PADDING_VAL) {
+                    // スキップ
+                } else {
+                    result += String.fromCharCode(c3);
+                }
+            }
         }
         return result;
     }
