@@ -147,10 +147,10 @@
             const initCamera = async () => {
                 try {
                     // スマートフォンなどの場合は背面カメラ（environment）を優先
-                    const constraints = {
+                        const constraints = {
                         video: { facingMode: "environment" },
                         audio: false
-                    };
+                };
                     
                     stream = await navigator.mediaDevices.getUserMedia(constraints);
                     if (videoElement.value) {
